@@ -38,15 +38,15 @@ public class Program {
 	string Cyan ( string str )
 		=> $"{esc( 'B' )}{str}{esc( '\0' )}";
 
+	Config config = null!;
 	void Run () {
 		fgColorStack.Push( ConsoleColor.Gray );
 		bgColorStack.Push( ConsoleColor.Black );
 
 		WriteLine( "Welcome to o!f-l12n!\n" );
-		Config? config = null;
 
 		if ( File.Exists( configPath ) ) {
-			config = JsonConvert.DeserializeObject<Config>( File.ReadAllText( configPath ) );
+			config = JsonConvert.DeserializeObject<Config>( File.ReadAllText( configPath ) )!;
 		}
 		
 		if ( config is null ) {
@@ -62,23 +62,29 @@ public class Program {
 		WriteLine( $"Default Locale: {esc( 'Y' )}{LocalesLUT.LocaleName(config.DefaultLocale)} [{config.DefaultLocale}]{esc( '\0' )}" );
 		WriteLine( "" );
 
+		Load();
 		if ( !locales.ContainsKey( config.DefaultLocale ) ) {
 			locales.Add( config.DefaultLocale, new( config.DefaultLocale ) );
 			mainlocale = locales[config.DefaultLocale];
 		}
 
-		foreach ( var l in locales.Values ) {
-			// missing
-		}
-
 		string add = "Add new locale";
 		string edit = "Edit locale";
+		string rename = "Rename key";
 		string export = $"Generate {esc( 'G' )}.cs{esc( '\0' )} files";
 		string exit = $"{esc( 'R' )}Exit{esc( '\0' )}";
 
+		List<string> options = new();
 		while ( true ) {
 			Split();
-			var option = Select( new[] { edit, add, export, exit } );
+			options.Clear();
+			options.Add( edit );
+			options.Add( add );
+			if ( localesContainingKey.Any() )
+				options.Add( rename );
+			options.Add( export );
+			options.Add( exit );
+			var option = Select( options );
 			Split();
 			if ( option == add ) {
 				var locale = SelectNewLocale( allowCancel: true );
@@ -94,6 +100,52 @@ public class Program {
 					Edit( locale );
 				}
 			}
+			else if ( option == rename ) {
+				var key = Select( localesContainingKey.Keys.ToList(), k => $"{k} [in {localesContainingKey[k].Count}/{locales.Count} locales]", allowCancel: true );
+				if ( key == null )
+					return;
+
+				WriteLine( "Key:" );
+				WriteLine( $"You can group keys with dots or slashes, for example {Yellow( "chat.send" )} or {Yellow( "options/general" )}" );
+				var newKey = Prompt().Trim();
+				if ( localesContainingKey.ContainsKey( newKey ) ) {
+					WriteLine( $"Key already exists. This will merge {Yellow( key )} into {Yellow( newKey )}" );
+					WriteLine( "Are you sure?" );
+					if ( Select( new[] { "Nope", "Do it" } ) == "Do it" ) {
+						foreach ( var i in localesContainingKey[key].ToArray() ) {
+							if ( i.Strings.ContainsKey( newKey ) ) {
+								i.Strings[key].Key = newKey;
+								i.Strings[newKey] = i.Strings[key];
+								i.Strings.Remove( key );
+								onLocaleKeyRemoved( i, key );
+							}
+							else {
+								i.Strings[key].Key = newKey;
+								i.Strings[newKey] = i.Strings[key];
+								i.Strings.Remove( key );
+								onLocaleKeyRemoved( i, key );
+								onLocaleKeyAdded( i, newKey );
+							}
+						}
+
+						Save( onlyCurrent: false );
+					}
+				}
+				else if ( !keyRegex.IsMatch( newKey ) )
+					Error( "Invalid key" );
+				else {
+					localesContainingKey[newKey] = localesContainingKey[key];
+					localesContainingKey.Remove( key );
+
+					foreach ( var i in localesContainingKey[newKey] ) {
+						i.Strings[key].Key = newKey;
+						i.Strings[newKey] = i.Strings[key];
+						i.Strings.Remove( key );
+					}
+
+					Save( onlyCurrent: false );
+				}
+			}
 			else if ( option == export ) {
 
 			}
@@ -103,10 +155,15 @@ public class Program {
 		}
 	}
 
-	void Save () { // only current locale
+	void Load () {
 
 	}
 
+	void Save ( bool onlyCurrent = true ) {
+
+	}
+
+	static Regex keyRegex = new( "\\w+([./]\\w+)*", RegexOptions.Compiled );
 	Locale currentLocale = null!;
 	void Edit ( Locale locale ) {
 		currentLocale = locale;
@@ -178,11 +235,12 @@ public class Program {
 			}
 			else if ( option == add ) {
 				WriteLine( "Key:" );
+				WriteLine( $"You can group keys with dots or slashes, for example {Yellow("chat.send")} or {Yellow("options/general")}" );
 				var key = Prompt().Trim();
 				if ( locale.Strings.ContainsKey( key ) )
 					Error( "Key already exists" );
-				else if ( key == "" )
-					Error( "Empty key" );
+				else if ( !keyRegex.IsMatch( key ) )
+					Error( "Invalid key" );
 				else {
 					LocalisableString str = new( key );
 					locale.Strings.Add( key, str );
@@ -324,6 +382,7 @@ public class Program {
 				sampleArgs[arg] = value;
 			}
 			else if ( option == changeGuide ) {
+				Split();
 				var guide = Select( possibleGuides, l => $"{l.Name} [{l.ISO}]: {Red( "\"" )}{l.Strings[str.Key].ColoredValue}{Red( "\"" )}", allowCancel: true );
 				if ( guide == null )
 					continue;
