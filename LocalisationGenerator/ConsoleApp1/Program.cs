@@ -57,16 +57,17 @@ public class Program {
 			WriteLine( "Welcome to o!f-l12n!\n" );
 		}
 
-		WriteLine( $"Project       : {esc('G')}{Path.GetFileName( config.ProjectPath )}{esc( '\0' )}" );
-		WriteLine( $"Namespace     : {esc( 'G' )}{config.Namespace}{esc( '\0' )}" );
-		WriteLine( $"Default Locale: {esc( 'Y' )}{LocalesLUT.LocaleName(config.DefaultLocale)} [{config.DefaultLocale}]{esc( '\0' )}" );
+		if ( string.IsNullOrWhiteSpace( config.ProjectPath ) ) {
+			WriteLine( "Local project" );
+		}
+		else {
+			WriteLine( $"Project       : {esc( 'G' )}{Path.GetFileName( config.ProjectPath )}{esc( '\0' )}" );
+			WriteLine( $"Namespace     : {esc( 'G' )}{config.Namespace}{esc( '\0' )}" );
+		}
+		WriteLine( $"Default Locale: {esc( 'Y' )}{LocalesLUT.LocaleName( config.DefaultLocale )} [{config.DefaultLocale}]{esc( '\0' )}" );
 		WriteLine( "" );
 
 		Load();
-		if ( !locales.ContainsKey( config.DefaultLocale ) ) {
-			locales.Add( config.DefaultLocale, new( config.DefaultLocale ) );
-			mainlocale = locales[config.DefaultLocale];
-		}
 
 		string add = "Add new locale";
 		string edit = "Edit locale";
@@ -82,7 +83,8 @@ public class Program {
 			options.Add( add );
 			if ( localesContainingKey.Any() )
 				options.Add( rename );
-			options.Add( export );
+			if ( !string.IsNullOrWhiteSpace( config.ProjectPath ) ) 
+				options.Add( export );
 			options.Add( exit );
 			var option = Select( options );
 			Split();
@@ -156,11 +158,47 @@ public class Program {
 	}
 
 	void Load () {
+		localesContainingKey.Clear();
+		locales.Clear();
 
+		if ( Directory.Exists( config.L12NFilesLocation ) ) {
+			foreach ( var i in Directory.EnumerateFiles( config.L12NFilesLocation, "*.jsonc" ) ) {
+				try {
+					var file = JsonConvert.DeserializeObject<SaveFormat>( File.ReadAllText( i ) );
+					if ( file is null )
+						continue;
+
+					var locale = new Locale( file.Iso );
+					locales.Add( file.Iso, locale );
+					foreach ( var (key, value) in file.Data ) {
+						locale.Strings.Add( key, new LocalisableString( key ) { Value = value } );
+						onLocaleKeyAdded( locale, key );
+					}
+				}
+				catch { }
+			}
+		}
+
+		if ( !locales.ContainsKey( config.DefaultLocale ) ) {
+			locales.Add( config.DefaultLocale, new( config.DefaultLocale ) );
+		}
+		mainlocale = locales[config.DefaultLocale];
 	}
 
 	void Save ( bool onlyCurrent = true ) {
-
+		Directory.CreateDirectory( config.L12NFilesLocation );
+		foreach ( var locale in onlyCurrent ? (IEnumerable<Locale>)new[] { currentLocale } : locales.Values ) {
+			File.WriteAllText( 
+				Path.Combine( config.L12NFilesLocation, $"{locale.ISO}.jsonc" ),  
+				JsonConvert.SerializeObject( new {
+					iso = locale.ISO,
+					data = locale.Strings.ToDictionary(
+						ks => ks.Key,
+						vs => vs.Value.Value
+					)
+				}, Newtonsoft.Json.Formatting.Indented )
+			);
+		}
 	}
 
 	static Regex keyRegex = new( "\\w+([./]\\w+)*", RegexOptions.Compiled );
@@ -754,6 +792,24 @@ public class Program {
 	}
 
 	Config Setup () {
+		WriteLine( $"Do you have a {Green(".csproj")} you want to link, or do you want to just edit localisation files locally?" );
+		if ( Select( new[] { "Link", "Local" } ) == "Local" ) {
+			WriteLine( "Now, before we begin, what will the default locale be?" );
+			var locale2 = Select( LocalesLUT.IsoToName.Values.Take( 1 ).Append( "Other" ).Concat( LocalesLUT.IsoToName.Values.Skip( 1 ) ).ToList() );
+			if ( locale2 == "Other" ) {
+				WriteLine( "Please provide an ISO language code:" );
+				locale2 = Prompt();
+			}
+			else {
+				locale2 = LocalesLUT.NameToIso[locale2];
+			}
+
+			return new Config {
+				DefaultLocale = locale2,
+				L12NFilesLocation = "./Source"
+			};
+		}
+
 		WriteLine( $"First, where is your project located? (that's the {esc( 'G' )}.csproj{esc( '\0' )} file)" );
 		WriteLine( $"The current location is {esc( 'G' )}{Directory.GetCurrentDirectory()}{esc( '\0' )}" );
 		WriteLine( "The exact file location, or the folder it's in is fine:" );
@@ -828,7 +884,13 @@ public class Program {
 				break;
 
 			case project:
-				store = Path.Combine( location, "..", @namespace.Replace( '.', Path.DirectorySeparatorChar ) );
+				var name = @namespace;
+				if ( name.StartsWith( rootNamespace + "." ) )
+					name = name[( rootNamespace.Length + 1 )..];
+				else if ( name == rootNamespace )
+					name = "";
+
+				store = Path.Combine( location, "..", name.Replace( '.', Path.DirectorySeparatorChar ) );
 				break;
 
 			case custom:
