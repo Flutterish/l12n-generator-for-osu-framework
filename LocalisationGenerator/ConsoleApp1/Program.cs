@@ -201,13 +201,13 @@ public class Program {
 		}
 	}
 
-	static Regex keyRegex = new( "\\w+([./]\\w+)*", RegexOptions.Compiled );
+	static Regex keyRegex = new( "[a-zA-Z_][a-zA-Z_0-9]*([./][a-zA-Z_][a-zA-Z_0-9]*)*", RegexOptions.Compiled );
 	Locale currentLocale = null!;
 	void Edit ( Locale locale ) {
 		currentLocale = locale;
 
 		string edit = "Edit string";
-		string addMissing = "Add missing string"; // TODO detect missing
+		string addMissing = "Add missing string";
 		string add = "Add new string";
 		string remove = $"{esc( 'R' )}Remove string{esc( '\0' )}";
 
@@ -238,9 +238,9 @@ public class Program {
 
 			if ( missing.Any() )
 				options.Add( addMissing );
+			options.Add( add );
 			if ( locale.Strings.Count != 0 )
 				options.Add( edit );
-			options.Add( add );
 			if ( locale.Strings.Count != 0 )
 				options.Add( remove );
 
@@ -301,6 +301,7 @@ public class Program {
 	}
 
 	void EditString ( LocalisableString str ) {
+		var immediateEdit = true;
 		var edit = "Edit";
 		var editArgs = "Edit sample arguments";
 		var changeGuide = "Change guide";
@@ -400,7 +401,8 @@ public class Program {
 				options.Add( changeGuide );
 			options.Add( finish );
 
-			var option = Select( options );
+			var option = immediateEdit ? edit : Select( options );
+			immediateEdit = false;
 			if ( option == edit ) {
 				EditField( x, y, str.Value, s => {
 					str.Value = s;
@@ -864,7 +866,7 @@ public class Program {
 			}
 			else {
 				var ns = Prompt();
-				if ( new Regex( "^[a-zA-Z_]+[a-zA-Z0-9_]*(\\.[a-zA-Z0-9_]+)*$" ).IsMatch( ns ) ) {
+				if ( new Regex( "[a-zA-Z_][a-zA-Z_0-9]*(\\.[a-zA-Z_][a-zA-Z_0-9]*)*" ).IsMatch( ns ) ) {
 					@namespace = ns;
 				}
 				else {
