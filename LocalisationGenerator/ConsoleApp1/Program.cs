@@ -1,9 +1,7 @@
 ﻿using LocalisationGenerator;
 using Newtonsoft.Json;
-using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Xml;
 
@@ -224,12 +222,15 @@ public class Program {
 			return locale.Strings[key];
 		}
 		List<string> missing = new();
-		while ( true ) {
+		void updateMissing () {
 			missing.Clear();
 			foreach ( var (key, list) in localesContainingKey ) {
 				if ( !list.Contains( locale ) )
 					missing.Add( key );
 			}
+		}
+		while ( true ) {
+			updateMissing();
 
 			Split();
 			WriteLine( $"Locale: {esc( 'Y' )}{locale.Name} [{locale.ISO}]{esc( '\0' )}" );
@@ -250,13 +251,22 @@ public class Program {
 				return;
 			}
 
+			select:
 			if ( option == edit ) {
 				var str = selectString();
 				if ( str == null )
 					continue;
 
 				keyIndex = selectIndex;
-				EditString( str );
+				switch ( EditString( str, missing.Any() ) ) {
+					case 1:
+						updateMissing();
+						option = addMissing;
+						goto select;
+					case 2:
+						option = add;
+						goto select;
+				}
 				Save();
 			}
 			else if ( option == addMissing ) {
@@ -268,7 +278,15 @@ public class Program {
 				locale.Strings.Add( key, str );
 				onLocaleKeyAdded( locale, key );
 
-				EditString( str );
+				switch ( EditString( str, missing.Any() ) ) {
+					case 1:
+						updateMissing();
+						option = addMissing;
+						goto select;
+					case 2:
+						option = add;
+						goto select;
+				}
 				Save();
 			}
 			else if ( option == add ) {
@@ -284,7 +302,15 @@ public class Program {
 					locale.Strings.Add( key, str );
 					onLocaleKeyAdded( locale, key );
 
-					EditString( str );
+					switch ( EditString( str, missing.Any() ) ) {
+						case 1:
+							updateMissing();
+							option = addMissing;
+							goto select;
+						case 2:
+							option = add;
+							goto select;
+					}
 					Save();
 				}
 			}
@@ -300,12 +326,14 @@ public class Program {
 		}
 	}
 
-	void EditString ( LocalisableString str ) {
+	int EditString ( LocalisableString str, bool anyMissing ) {
 		var immediateEdit = true;
 		var edit = "Edit";
 		var editArgs = "Edit sample arguments";
 		var changeGuide = "Change guide";
 		var finish = $"{esc( 'R' )}Finish{esc( '\0' )}";
+		var addMissing = "Add next missing string";
+		var addNext = "Add next string";
 
 		var possibleGuides = localesContainingKey[str.Key].Where( x => x != currentLocale ).ToList();
 		var guideLocale = possibleGuides.FirstOrDefault( x => x == mainlocale ) ?? possibleGuides.ElementAtOrDefault( 0 );
@@ -394,6 +422,9 @@ public class Program {
 			showResult();
 
 			options.Clear();
+			if ( anyMissing )
+				options.Add( addMissing );
+			options.Add( addNext );
 			options.Add( edit );
 			if ( str.Args.Any() )
 				options.Add( editArgs );
@@ -432,7 +463,15 @@ public class Program {
 			}
 			else if ( option == finish ) {
 				Console.Clear();
-				return;
+				return 0;
+			}
+			else if ( option == addMissing ) {
+				Console.Clear();
+				return 1;
+			}
+			else if ( option == addNext ) {
+				Console.Clear();
+				return 2;
 			}
 		}
 	}
