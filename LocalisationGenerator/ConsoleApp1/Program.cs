@@ -100,6 +100,7 @@ public class Program {
 		string edit = "Edit locale";
 		string rename = "Rename key";
 		string export = $"Generate {esc( 'G' )}.cs{esc( '\0' )} files";
+		string summarise = $"Summary";
 		string change = $"Change project";
 		string exit = $"{esc( 'R' )}Exit{esc( '\0' )}";
 
@@ -111,6 +112,7 @@ public class Program {
 			options.Add( add );
 			if ( localesContainingKey.Any() )
 				options.Add( rename );
+			options.Add( summarise );
 			if ( !string.IsNullOrWhiteSpace( config.ProjectPath ) ) 
 				options.Add( export );
 			options.Add( change );
@@ -177,6 +179,37 @@ public class Program {
 					Save( onlyCurrent: false );
 				}
 			}
+			else if ( option == summarise ) {
+				var summary = new Summary( locales.Values );
+				WriteLine( "Locales:" );
+				foreach ( var (iso, locale) in summary.Locales ) {
+					Write( Yellow($"{locale.Locale.Name} [{iso}]" ) + ": " );
+					WriteLine( $"{bar((float)locale.LocalisedStrings.Count / summary.Keys.Count)}" );
+				}
+
+				Split();
+				WriteLine( "Keys:" );
+				foreach ( var (key, str) in summary.Keys.OrderBy( x => x.Key ) ) {
+					WriteLine( Yellow(key) + ": " + bar((float)str.LocalisedIn.Count / summary.Locales.Count) );
+					var lang = str.LocalisedIn.FirstOrDefault( x => x == mainlocale ) ?? str.LocalisedIn.First();
+					WriteLine( $"\tExample [{lang.ISO}]: {Red( "\"" )}{lang.Strings[key].ColoredValue}{Red( "\"" )}" );
+					if ( str.NotLocalisedIn.Any() ) {
+						WriteLine( $"\tNot localised in: {string.Join( ", ", str.NotLocalisedIn.Select( x => Yellow($"{x.Name} [{x.ISO}]" ) ) )}" );
+					}
+					WriteLine( $"\tArguments: {string.Join( ", ", str.Arguments.Select( x => $"{{{x.Key}}}" ) )}" );
+				}
+
+				Split();
+				WriteLine( "Issues:" );
+				foreach ( var (iso, locale) in summary.Locales.Where( x => x.Value.MissingStrings.Any() ) ) {
+					Error( Yellow( $"{locale.Locale.Name} [{iso}]" ) + $": Has {locale.MissingStrings.Count} missing string{(locale.MissingStrings.Count == 1 ? "" : "s")}" );
+				}
+				foreach ( var (key, str) in summary.Keys.OrderBy( x => x.Key ) ) {
+					foreach ( var missing in str.Arguments.Where( x => x.Value.Count != str.LocalisedIn.Count ) ) {
+						Error( $"{Yellow(key)}: The argument {Green(missing.Key)} is not used in {string.Join( ", ", str.LocalisedIn.Except( missing.Value ).Select( x => Yellow( $"{x.Name} [{x.ISO}]" ) ) )}" );
+					}
+				}
+			}
 			else if ( option == export ) {
 
 			}
@@ -188,6 +221,12 @@ public class Program {
 				return;
 			}
 		}
+	}
+
+	string bar ( float progress, int width = 20 ) {
+		progress = Math.Clamp( progress, 0, 1 );
+		var fill = (int)Math.Floor( progress * width );
+		return $"[{new string( '#', fill )}{new string( ' ', width - fill )}] {progress*100:N2}%";
 	}
 
 	void Load () {
