@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LocalisationGenerator;
+﻿namespace LocalisationGenerator;
 
 public static class LocalesLUT {
 	public static readonly Dictionary<string, string> IsoToName = new() {

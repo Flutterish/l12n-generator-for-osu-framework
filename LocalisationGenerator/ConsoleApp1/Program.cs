@@ -37,6 +37,7 @@ public class Program {
 		=> $"{esc( 'B' )}{str}{esc( '\0' )}";
 
 	Config config = null!;
+	string startingPath = Directory.GetCurrentDirectory();
 	void Run () {
 		fgColorStack.Push( ConsoleColor.Gray );
 		bgColorStack.Push( ConsoleColor.Black );
@@ -44,19 +45,47 @@ public class Program {
 		WriteLine( "Welcome to o!f-l12n!\n" );
 
 		if ( File.Exists( configPath ) ) {
-			config = JsonConvert.DeserializeObject<Config>( File.ReadAllText( configPath ) )!;
+			WriteLine( "There is a config file in this directory - load?" );
+			if ( Select( new[] { "Load", "Use different one" } ) == "Load" ) {
+				config = JsonConvert.DeserializeObject<Config>( File.ReadAllText( configPath ) )!;
+				Console.Clear();
+			}
 		}
-		
+
+	selectProject:
+		Directory.SetCurrentDirectory( startingPath );
 		if ( config is null ) {
-			WriteLine( "It seems there is not project set up, let's get to that--" );
-			config = Setup();
-			File.WriteAllText( configPath, JsonConvert.SerializeObject( config, Newtonsoft.Json.Formatting.Indented ) );
+			while ( true ) {
+				WriteLine( $"Where should I load the project from? (it should have an {Green("l12nConfig.json")} file)" );
+				if ( Select( new[] { "Select path", "Create new" } ) == "Select path" ) {
+					var path = Prompt();
+					if ( Directory.Exists( path ) ) {
+						if ( File.Exists( Path.Combine( path, configPath ) ) ) {
+							Directory.SetCurrentDirectory( path );
+							config = JsonConvert.DeserializeObject<Config>( File.ReadAllText( configPath ) )!;
+							break;
+						}
+						else {
+							Error( "No config file in that directory" );
+						}
+					}
+					else {
+						Error( "Directory doesn't exist or I have no access to it" );
+					}
+				}
+				else {
+					config = Setup();
+					File.WriteAllText( configPath, JsonConvert.SerializeObject( config, Newtonsoft.Json.Formatting.Indented ) );
+					break;
+				}
+			}
+
 			Console.Clear();
 			WriteLine( "Welcome to o!f-l12n!\n" );
 		}
 
 		if ( string.IsNullOrWhiteSpace( config.ProjectPath ) ) {
-			WriteLine( "Local project" );
+			WriteLine( $"Local project at {Green(Directory.GetCurrentDirectory())}" );
 		}
 		else {
 			WriteLine( $"Project       : {esc( 'G' )}{Path.GetFileName( config.ProjectPath )}{esc( '\0' )}" );
@@ -71,6 +100,7 @@ public class Program {
 		string edit = "Edit locale";
 		string rename = "Rename key";
 		string export = $"Generate {esc( 'G' )}.cs{esc( '\0' )} files";
+		string change = $"Change project";
 		string exit = $"{esc( 'R' )}Exit{esc( '\0' )}";
 
 		List<string> options = new();
@@ -83,6 +113,7 @@ public class Program {
 				options.Add( rename );
 			if ( !string.IsNullOrWhiteSpace( config.ProjectPath ) ) 
 				options.Add( export );
+			options.Add( change );
 			options.Add( exit );
 			var option = Select( options );
 			Split();
@@ -103,7 +134,7 @@ public class Program {
 			else if ( option == rename ) {
 				var key = Select( localesContainingKey.Keys.ToList(), k => $"{k} [in {localesContainingKey[k].Count}/{locales.Count} locales]", allowCancel: true );
 				if ( key == null )
-					return;
+					continue;
 
 				WriteLine( "Key:" );
 				WriteLine( $"You can group keys with dots or slashes, for example {Yellow( "chat.send" )} or {Yellow( "options/general" )}" );
@@ -149,6 +180,10 @@ public class Program {
 			else if ( option == export ) {
 
 			}
+			else if ( option == change ) {
+				config = null;
+				goto selectProject;
+			} 
 			else if ( option == exit ) {
 				return;
 			}
@@ -229,9 +264,8 @@ public class Program {
 					missing.Add( key );
 			}
 		}
+		updateMissing();
 		while ( true ) {
-			updateMissing();
-
 			Split();
 			WriteLine( $"Locale: {esc( 'Y' )}{locale.Name} [{locale.ISO}]{esc( '\0' )}" );
 
@@ -258,36 +292,45 @@ public class Program {
 					continue;
 
 				keyIndex = selectIndex;
-				switch ( EditString( str, missing.Any() ) ) {
+				var op = EditString( str, missing.Any() );
+				Save();
+				switch ( op ) {
 					case 1:
-						updateMissing();
 						option = addMissing;
 						goto select;
 					case 2:
 						option = add;
 						goto select;
 				}
-				Save();
 			}
 			else if ( option == addMissing ) {
-				var key = Select( missing, allowCancel: true );
+				var guides = new Dictionary<string, string>();
+				foreach ( var k in missing ) {
+					var possibleGuides = localesContainingKey[k].ToList();
+					var guideLocale = possibleGuides.FirstOrDefault( x => x == mainlocale ) ?? possibleGuides.ElementAtOrDefault( 0 );
+					var guideStr = guideLocale?.Strings[k];
+					guides.Add( k, guideStr is null ? Yellow(k) : $"{Yellow(k)}: {Red("\"")}{guideStr.ColoredValue}{Red( "\"" )}" );
+				}
+
+				var key = Select( missing, k => guides[k], allowCancel: true );
 				if ( key == null )
 					continue;
 
 				LocalisableString str = new( key );
 				locale.Strings.Add( key, str );
 				onLocaleKeyAdded( locale, key );
+				updateMissing();
 
-				switch ( EditString( str, missing.Any() ) ) {
+				var op = EditString( str, missing.Any() );
+				Save();
+				switch ( op ) {
 					case 1:
-						updateMissing();
 						option = addMissing;
 						goto select;
 					case 2:
 						option = add;
 						goto select;
 				}
-				Save();
 			}
 			else if ( option == add ) {
 				WriteLine( "Key:" );
@@ -301,17 +344,18 @@ public class Program {
 					LocalisableString str = new( key );
 					locale.Strings.Add( key, str );
 					onLocaleKeyAdded( locale, key );
+					updateMissing();
 
-					switch ( EditString( str, missing.Any() ) ) {
+					var op = EditString( str, missing.Any() );
+					Save();
+					switch ( op ) {
 						case 1:
-							updateMissing();
 							option = addMissing;
 							goto select;
 						case 2:
 							option = add;
 							goto select;
 					}
-					Save();
 				}
 			}
 			else if ( option == remove ) {
@@ -321,6 +365,7 @@ public class Program {
 
 				locale.Strings.Remove( str.Key );
 				onLocaleKeyRemoved( locale, str.Key );
+				updateMissing();
 				Save();
 			}
 		}
@@ -671,7 +716,7 @@ public class Program {
 		return iso == null ? null : locales[iso];
 	}
 
-	static string configPath = "./config.json";
+	static string configPath = "./l12nConfig.json";
 	public static char escChar = '\u001C';
 	public static string esc ( char c ) {
 		return $"{escChar}{c}";

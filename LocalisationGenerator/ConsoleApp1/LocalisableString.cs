@@ -41,7 +41,7 @@ public class LocalisableString {
 				if ( n.Length > 1 ) {
 					if ( colorizeInnards ) sb.Append( Program.esc( 'B' ) );
 					sb.Append( ':' );
-					sb.Append( string.Join( ':', n.Skip( 1 ) ) );
+					sb.Append( string.Join( ':', n[1..] ) );
 					if ( colorizeInnards ) sb.Append( Program.esc( '\0' ) );
 				}
 				sb.Append( '}' );
@@ -99,7 +99,7 @@ public class LocalisableString {
 				sb.Append( indices[s[0]] );
 				if ( s.Length > 1 ) {
 					sb.Append( ':' );
-					sb.Append( string.Join( ':', s[2..].Prepend( s[1][..^2] ) ) );
+					sb.Append( string.Join( ':', s[1..] ) );
 				}
 				sb.Append( '}' );
 			}
