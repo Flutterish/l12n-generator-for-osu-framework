@@ -3,6 +3,7 @@
 public class Summary {
 	public readonly Dictionary<string, KeySummary> Keys = new();
 	public readonly Dictionary<string, LocaleSummary> Locales = new();
+	public LocaleNamespace RootNamespace = new( "" );
 
 	public Summary ( IEnumerable<Locale> locales ) {
 		foreach ( var locale in locales ) {
@@ -35,6 +36,22 @@ public class Summary {
 				}
 			}
 		}
+
+		foreach ( var key in Keys.Keys ) {
+			var ns = RootNamespace;
+			var split = key.Split( '.', '/' );
+
+			if ( split.Length > 1 ) {
+				foreach ( var nested in split[..^1] ) {
+					if ( !ns.Nested.TryGetValue( nested, out var next ) )
+						ns.Nested.Add( nested, next = new( ns.Name + '.' + nested ) );
+
+					ns = next;
+				}
+			}
+
+			ns.Keys.Add( split[^1], key );
+		}
 	}
 }
 
@@ -58,4 +75,14 @@ public class LocaleSummary {
 
 	public List<string> LocalisedStrings = new();
 	public List<string> MissingStrings = new();
+}
+
+public class LocaleNamespace {
+	public string Name;
+	public LocaleNamespace ( string name ) {
+		Name = name;
+	}
+
+	public Dictionary<string, string> Keys = new();
+	public Dictionary<string, LocaleNamespace> Nested = new();
 }

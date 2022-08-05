@@ -189,15 +189,37 @@ public class Program {
 
 				Split();
 				WriteLine( "Keys:" );
-				foreach ( var (key, str) in summary.Keys.OrderBy( x => x.Key ) ) {
-					WriteLine( Yellow(key) + ": " + bar((float)str.LocalisedIn.Count / summary.Locales.Count) );
-					var lang = str.LocalisedIn.FirstOrDefault( x => x == mainlocale ) ?? str.LocalisedIn.First();
-					WriteLine( $"\tExample [{lang.ISO}]: {Red( "\"" )}{lang.Strings[key].ColoredValue}{Red( "\"" )}" );
-					if ( str.NotLocalisedIn.Any() ) {
-						WriteLine( $"\tNot localised in: {string.Join( ", ", str.NotLocalisedIn.Select( x => Yellow($"{x.Name} [{x.ISO}]" ) ) )}" );
+				void tree ( LocaleNamespace ns, int indent = 0, bool leftLine = true ) {
+					int c = 0;
+					bool isLast () {
+						return c == ns.Keys.Count + ns.Nested.Count;
 					}
-					WriteLine( $"\tArguments: {string.Join( ", ", str.Arguments.Select( x => $"{{{x.Key}}}" ) )}" );
+					string rept ( string str, int count ) {
+						var r = "";
+						for ( int i = 0; i < count; i++ )
+							r += str;
+
+						return r;
+					}
+					foreach ( var (shortKey, key) in ns.Keys.OrderBy( x => x.Key ) ) {
+						c++;
+						var str = summary!.Keys[key];
+						WriteLine( rept( leftLine ? "│ " : "  ", indent ) + ( isLast() ? "└─" : "├─" ) + Yellow( shortKey ) + ": " + bar( (float)str.LocalisedIn.Count / summary.Locales.Count ) );
+						var lang = str.LocalisedIn.FirstOrDefault( x => x == mainlocale ) ?? str.LocalisedIn.First();
+						WriteLine( rept( leftLine ? "│ " : "  ", indent ) + ( isLast() ? "   " : "│ ") + $"\tExample [{lang.ISO}]: {Red( "\"" )}{lang.Strings[key].ColoredValue}{Red( "\"" )}" );
+						if ( str.NotLocalisedIn.Any() ) {
+							WriteLine( rept( leftLine ? "│ " : "  ", indent ) + ( isLast() ? "   " : "│ " ) + $"\tNot localised in: {string.Join( ", ", str.NotLocalisedIn.Select( x => Yellow( $"{x.Name} [{x.ISO}]" ) ) )}" );
+						}
+						if ( str.Arguments.Any() )
+							WriteLine( rept( leftLine ? "│ " : "  ", indent ) + ( isLast() ? "   " : "│ " ) + $"\tArguments: {string.Join( ", ", str.Arguments.Select( x => $"{{{x.Key}}}" ) )}" );
+					}
+					foreach ( var (name, nested) in ns.Nested.OrderBy( x => x.Key ) ) {
+						c++;
+						WriteLine( rept( leftLine ? "│ " : "  ", indent ) + (isLast() ? "└─" : "├─") + name );
+						tree( nested, indent + 1, !isLast() );
+					}
 				}
+				tree( summary.RootNamespace );
 
 				Split();
 				WriteLine( "Issues:" );
@@ -234,7 +256,7 @@ public class Program {
 		locales.Clear();
 
 		if ( Directory.Exists( config.L12NFilesLocation ) ) {
-			foreach ( var i in Directory.EnumerateFiles( config.L12NFilesLocation, "*.jsonc" ) ) {
+			foreach ( var i in Directory.EnumerateFiles( config.L12NFilesLocation, "*.json" ) ) {
 				try {
 					var file = JsonConvert.DeserializeObject<SaveFormat>( File.ReadAllText( i ) );
 					if ( file is null )
@@ -261,7 +283,7 @@ public class Program {
 		Directory.CreateDirectory( config.L12NFilesLocation );
 		foreach ( var locale in onlyCurrent ? (IEnumerable<Locale>)new[] { currentLocale } : locales.Values ) {
 			File.WriteAllText( 
-				Path.Combine( config.L12NFilesLocation, $"{locale.ISO}.jsonc" ),  
+				Path.Combine( config.L12NFilesLocation, $"{locale.ISO}.json" ),  
 				JsonConvert.SerializeObject( new {
 					iso = locale.ISO,
 					data = locale.Strings.ToDictionary(
@@ -998,7 +1020,7 @@ public class Program {
 			}
 		}
 
-		WriteLine( $"Where would you like to store the {esc( 'G' )}.jsonc{esc( '\0' )} files?" );
+		WriteLine( $"Where would you like to store the {esc( 'G' )}.json{esc( '\0' )} files?" );
 		const string project = "In the project files";
 		const string here = "Next to this executable";
 		const string custom = "Somewhere else";
