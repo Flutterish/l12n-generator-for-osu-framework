@@ -132,7 +132,7 @@ public class Program {
 				}
 			}
 			else if ( option == rename ) {
-				var key = Select( localesContainingKey.Keys.ToList(), k => $"{k} [in {localesContainingKey[k].Count}/{locales.Count} locales]", allowCancel: true );
+				var key = Select( localesContainingKey.Keys.OrderBy( x => x ).ToList(), k => $"{k} [in {localesContainingKey[k].Count}/{locales.Count} locales]", allowCancel: true );
 				if ( key == null )
 					continue;
 
@@ -249,7 +249,7 @@ public class Program {
 		LocalisableString? selectString () {
 			selectIndex = keyIndex;
 			keepSelectIndex = true;
-			var key = Select( locale.Strings.Keys.ToList(), s => $"{Yellow( s )}: {locale.Strings[s].ColoredValue}", allowCancel: true );
+			var key = Select( locale.Strings.Keys.OrderBy( x => x ).ToList(), s => $"{Yellow( s )}: {locale.Strings[s].ColoredValue}", allowCancel: true );
 			if ( key == null )
 				return null;
 
@@ -305,7 +305,7 @@ public class Program {
 			}
 			else if ( option == addMissing ) {
 				var guides = new Dictionary<string, string>();
-				foreach ( var k in missing ) {
+				foreach ( var k in missing.OrderBy( x => x ) ) {
 					var possibleGuides = localesContainingKey[k].ToList();
 					var guideLocale = possibleGuides.FirstOrDefault( x => x == mainlocale ) ?? possibleGuides.ElementAtOrDefault( 0 );
 					var guideStr = guideLocale?.Strings[k];
