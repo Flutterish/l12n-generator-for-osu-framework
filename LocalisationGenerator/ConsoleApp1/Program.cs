@@ -1,5 +1,6 @@
 ﻿using LocalisationGenerator;
 using Newtonsoft.Json;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
@@ -141,7 +142,11 @@ public class Program {
 				WriteLine( "Key:" );
 				WriteLine( $"You can group keys with dots or slashes, for example {Yellow( "chat.send" )} or {Yellow( "options/general" )}" );
 				var newKey = Prompt().Trim();
-				if ( localesContainingKey.ContainsKey( newKey ) ) {
+				if ( key == newKey ) {
+					Error( "That's the same name" );
+					continue;
+				}
+				else if ( localesContainingKey.ContainsKey( newKey ) ) {
 					WriteLine( $"Key already exists. This will merge {Yellow( key )} into {Yellow( newKey )}" );
 					WriteLine( "Are you sure?" );
 					if ( Select( new[] { "Nope", "Do it" } ) == "Do it" ) {
@@ -286,7 +291,7 @@ public class Program {
 				Path.Combine( config.L12NFilesLocation, $"{locale.ISO}.json" ),  
 				JsonConvert.SerializeObject( new {
 					iso = locale.ISO,
-					data = locale.Strings.ToDictionary(
+					data = locale.Strings.ToImmutableSortedDictionary(
 						ks => ks.Key,
 						vs => vs.Value.Value
 					)
