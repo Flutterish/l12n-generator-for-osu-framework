@@ -204,7 +204,7 @@ public class Program {
 					var locale = new Locale( file.Iso );
 					locales.Add( file.Iso, locale );
 					foreach ( var (key, value) in file.Data ) {
-						locale.Strings.Add( key, new LocalisableString( key ) { Value = value } );
+						locale.Strings.Add( key, new LocalisableString( key, locale.ISO ) { Value = value } );
 						onLocaleKeyAdded( locale, key );
 					}
 				}
@@ -316,7 +316,7 @@ public class Program {
 				if ( key == null )
 					continue;
 
-				LocalisableString str = new( key );
+				LocalisableString str = new( key, locale.ISO );
 				locale.Strings.Add( key, str );
 				onLocaleKeyAdded( locale, key );
 				updateMissing();
@@ -341,7 +341,7 @@ public class Program {
 				else if ( !keyRegex.IsMatch( key ) )
 					Error( "Invalid key" );
 				else {
-					LocalisableString str = new( key );
+					LocalisableString str = new( key, locale.ISO );
 					locale.Strings.Add( key, str );
 					onLocaleKeyAdded( locale, key );
 					updateMissing();

@@ -1,16 +1,19 @@
-﻿using System.Text;
+﻿using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace LocalisationGenerator;
 
 public class LocalisableString {
 	public string Key;
+	public string Locale;
 	public string Value = string.Empty;
 	static readonly Regex ArgsRegex = new Regex( @"({{|\\[nt\\])|({[^}]+})", RegexOptions.Compiled );
 	static readonly Regex ColorRegex = new Regex( @"({{|}}|\\[^nt{}])|({[^}]*})|(\||\\t|\\n)", RegexOptions.Compiled );
 
-	public LocalisableString ( string key ) {
+	public LocalisableString ( string key, string locale ) {
 		Key = key;
+		Locale = locale;
 	}
 
 	public IEnumerable<string> Args
@@ -112,8 +115,8 @@ public class LocalisableString {
 	}
 
 	public string Format ( object?[] args, Dictionary<string, int>? indices = null )
-		=> string.Format( ExportAsIndices( indices ), args );
+		=> string.Format( CultureInfo.GetCultureInfo( Locale ), ExportAsIndices( indices ), args );
 
 	public string ColoredFormat ( object?[] args, Dictionary<string, int>? indices = null )
-		=> string.Format( Colorize( ExportAsIndices( indices ), colorizeInnards: false ), args );
+		=> string.Format( CultureInfo.GetCultureInfo( Locale ), Colorize( ExportAsIndices( indices ), colorizeInnards: false ), args );
 }
