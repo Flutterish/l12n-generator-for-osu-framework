@@ -326,6 +326,7 @@ public class Program {
 		}
 	}
 
+	Dictionary<string, string> sampleArgs = new();
 	int EditString ( LocalisableString str, bool anyMissing ) {
 		var immediateEdit = true;
 		var edit = "Edit";
@@ -339,7 +340,6 @@ public class Program {
 		var guideLocale = possibleGuides.FirstOrDefault( x => x == mainlocale ) ?? possibleGuides.ElementAtOrDefault( 0 );
 		var guideStr = guideLocale?.Strings[str.Key];
 
-		Dictionary<string, string> sampleArgs = new();
 		List<string> options = new();
 
 		Dictionary<string, int> indices = new();
