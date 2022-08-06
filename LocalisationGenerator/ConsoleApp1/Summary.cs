@@ -37,7 +37,7 @@ public class Summary {
 			}
 		}
 
-		foreach ( var key in Keys.Keys ) {
+		foreach ( var (key, keySummary) in Keys ) {
 			var ns = RootNamespace;
 			var split = key.Split( '.', '/' );
 
@@ -48,6 +48,11 @@ public class Summary {
 
 					ns = next;
 				}
+			}
+
+			int i = 0;
+			foreach ( var arg in keySummary.Arguments.Keys ) {
+				keySummary.ArgIndices.Add( arg, i++ );
 			}
 
 			ns.Keys.Add( split[^1], key );
@@ -65,6 +70,7 @@ public class KeySummary {
 	public List<Locale> NotLocalisedIn = new();
 
 	public Dictionary<string, List<Locale>> Arguments = new();
+	public Dictionary<string, int> ArgIndices = new();
 }
 
 public class LocaleSummary {

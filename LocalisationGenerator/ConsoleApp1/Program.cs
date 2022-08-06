@@ -76,7 +76,7 @@ public class Program {
 				}
 				else {
 					config = Setup();
-					File.WriteAllText( configPath, JsonConvert.SerializeObject( config, Newtonsoft.Json.Formatting.Indented ) );
+					SaveConfig();
 					break;
 				}
 			}
@@ -100,7 +100,8 @@ public class Program {
 		string add = "Add new locale";
 		string edit = "Edit locale";
 		string rename = "Rename key";
-		string export = $"Generate {esc( 'G' )}.cs{esc( '\0' )} files";
+		string export = $"Generate {esc( 'G' )}.cs{esc( '\0' )} and {esc( 'G' )}.resx{esc( '\0' )} files";
+		string link = $"Link a {Green(".csproj")} file";
 		string summarise = $"Summary";
 		string change = $"Change project";
 		string exit = $"{esc( 'R' )}Exit{esc( '\0' )}";
@@ -114,8 +115,10 @@ public class Program {
 			if ( localesContainingKey.Any() )
 				options.Add( rename );
 			options.Add( summarise );
-			if ( !string.IsNullOrWhiteSpace( config.ProjectPath ) ) 
+			if ( !string.IsNullOrWhiteSpace( config.ProjectPath ) )
 				options.Add( export );
+			else
+				options.Add( link );
 			options.Add( change );
 			options.Add( exit );
 			var option = Select( options );
@@ -146,6 +149,8 @@ public class Program {
 					Error( "That's the same name" );
 					continue;
 				}
+				else if ( !keyRegex.IsMatch( newKey ) )
+					Error( "Invalid key" );
 				else if ( localesContainingKey.ContainsKey( newKey ) ) {
 					WriteLine( $"Key already exists. This will merge {Yellow( key )} into {Yellow( newKey )}" );
 					WriteLine( "Are you sure?" );
@@ -169,8 +174,6 @@ public class Program {
 						Save( onlyCurrent: false );
 					}
 				}
-				else if ( !keyRegex.IsMatch( newKey ) )
-					Error( "Invalid key" );
 				else {
 					localesContainingKey[newKey] = localesContainingKey[key];
 					localesContainingKey.Remove( key );
@@ -237,8 +240,19 @@ public class Program {
 					}
 				}
 			}
+			else if ( option == link ) {
+				LinkProject( config );
+				SaveConfig();
+			}
 			else if ( option == export ) {
-
+				try {
+					var res = new ResourceGenerator( config, locales.Values );
+					res.Save();
+					WriteLine( Green( "Done" ) );
+				}
+				catch {
+					Error( "Failed." );
+				}
 			}
 			else if ( option == change ) {
 				config = null;
@@ -300,7 +314,11 @@ public class Program {
 		}
 	}
 
-	static Regex keyRegex = new( "[a-zA-Z_][a-zA-Z_0-9]*([./][a-zA-Z_][a-zA-Z_0-9]*)*", RegexOptions.Compiled );
+	void SaveConfig () {
+		File.WriteAllText( configPath, JsonConvert.SerializeObject( config, Newtonsoft.Json.Formatting.Indented ) );
+	}
+
+	public static readonly Regex keyRegex = new( "^[a-zA-Z_][a-zA-Z_0-9-]*([./][a-zA-Z_][a-zA-Z_0-9-]*)*$", RegexOptions.Compiled );
 	Locale currentLocale = null!;
 	void Edit ( Locale locale ) {
 		currentLocale = locale;
@@ -944,6 +962,26 @@ public class Program {
 	}
 
 	Config Setup () {
+		WriteLine( $"Where should the config file be located? (if the path doesn't exist, it will be created)" );
+		if ( Select( new[] { "Here", "Somewhere else" } ) != "Here" ) {
+			var path = Prompt( loc => {
+				try {
+					Path.GetFullPath( loc );
+					if ( File.Exists( loc ) ) {
+						Error( "A file with that name exists there -- can't create a directory" );
+						return false;
+					}
+					return true;
+				}
+				catch {
+					Error( "Not a valid path, or I have no access to it" );
+					return false;
+				}
+			} );
+			Directory.CreateDirectory( path );
+			Directory.SetCurrentDirectory( path );
+		}
+
 		WriteLine( $"Do you have a {Green(".csproj")} you want to link, or do you want to just edit localisation files locally?" );
 		if ( Select( new[] { "Link", "Local" } ) == "Local" ) {
 			WriteLine( "Now, before we begin, what will the default locale be?" );
@@ -962,6 +1000,24 @@ public class Program {
 			};
 		}
 
+		Config config = new();
+		LinkProject( config );
+
+		WriteLine( "Now, before we begin, what will the default locale be?" );
+		var locale = Select( LocalesLUT.IsoToName.Values.Take(1).Append( "Other" ).Concat( LocalesLUT.IsoToName.Values.Skip( 1 ) ).ToList() );
+		if ( locale == "Other" ) {
+			WriteLine( "Please provide an ISO language code:" );
+			locale = Prompt();
+		}
+		else {
+			locale = LocalesLUT.NameToIso[locale];
+		}
+
+		config.DefaultLocale = locale;
+		return config;
+	}
+
+	void LinkProject ( Config config ) {
 		WriteLine( $"First, where is your project located? (that's the {esc( 'G' )}.csproj{esc( '\0' )} file)" );
 		WriteLine( $"The current location is {esc( 'G' )}{Directory.GetCurrentDirectory()}{esc( '\0' )}" );
 		WriteLine( "The exact file location, or the folder it's in is fine:" );
@@ -1016,7 +1072,7 @@ public class Program {
 			}
 			else {
 				var ns = Prompt();
-				if ( new Regex( "[a-zA-Z_][a-zA-Z_0-9]*(\\.[a-zA-Z_][a-zA-Z_0-9]*)*" ).IsMatch( ns ) ) {
+				if ( new Regex( "^[a-zA-Z_][a-zA-Z_0-9]*(\\.[a-zA-Z_][a-zA-Z_0-9]*)*$" ).IsMatch( ns ) ) {
 					@namespace = ns;
 				}
 				else {
@@ -1025,61 +1081,50 @@ public class Program {
 			}
 		}
 
-		WriteLine( $"Where would you like to store the {esc( 'G' )}.json{esc( '\0' )} files?" );
-		const string project = "In the project files";
-		const string here = "Next to this executable";
-		const string custom = "Somewhere else";
-		var store = Select( new[] { project, here, custom } );
-		switch ( store ) {
-			case here:
-				store = "./Source";
-				break;
+		if ( string.IsNullOrWhiteSpace( config.L12NFilesLocation ) ) {
+			WriteLine( $"Where would you like to store the {esc( 'G' )}.json{esc( '\0' )} files?" );
+			const string project = "In the project files";
+			const string here = "Next to this executable";
+			const string custom = "Somewhere else";
+			var store = Select( new[] { project, here, custom } );
+			switch ( store ) {
+				case here:
+					store = "./Source";
+					break;
 
-			case project:
-				var name = @namespace;
-				if ( name.StartsWith( rootNamespace + "." ) )
-					name = name[( rootNamespace.Length + 1 )..];
-				else if ( name == rootNamespace )
-					name = "";
+				case project:
+					var name = @namespace;
+					if ( name.StartsWith( rootNamespace + "." ) )
+						name = name[( rootNamespace.Length + 1 )..];
+					else if ( name == rootNamespace )
+						name = "";
 
-				store = Path.Combine( location, "..", name.Replace( '.', Path.DirectorySeparatorChar ) );
-				break;
+					store = Path.Combine( location, "..", name.Replace( '.', Path.DirectorySeparatorChar ) );
+					break;
 
-			case custom:
-				WriteLine( "Where? (if the path doesn't exist, it will be created)" );
-				store = Prompt( loc => {
-					try {
-						Path.GetFullPath( loc );
-						if ( File.Exists( loc ) ) {
-							Error( "A file with that name exists there -- can't create a directory" );
+				case custom:
+					WriteLine( "Where? (if the path doesn't exist, it will be created)" );
+					store = Prompt( loc => {
+						try {
+							Path.GetFullPath( loc );
+							if ( File.Exists( loc ) ) {
+								Error( "A file with that name exists there -- can't create a directory" );
+								return false;
+							}
+							return true;
+						}
+						catch {
+							Error( "Not a valid path, or I have no access to it" );
 							return false;
 						}
-						return true;
-					}
-					catch {
-						Error( "Not a valid path, or I have no access to it" );
-						return false;
-					}
-				} );
-				break;
+					} );
+					break;
+			}
+			config.L12NFilesLocation = store;
 		}
 
-		WriteLine( "Now, before we begin, what will the default locale be?" );
-		var locale = Select( LocalesLUT.IsoToName.Values.Take(1).Append( "Other" ).Concat( LocalesLUT.IsoToName.Values.Skip( 1 ) ).ToList() );
-		if ( locale == "Other" ) {
-			WriteLine( "Please provide an ISO language code:" );
-			locale = Prompt();
-		}
-		else {
-			locale = LocalesLUT.NameToIso[locale];
-		}
-
-		return new Config {
-			ProjectPath = location,
-			Namespace = @namespace,
-			RootNamespace = rootNamespace,
-			L12NFilesLocation = store,
-			DefaultLocale = locale
-		};
+		config.ProjectPath = location;
+		config.Namespace = @namespace;
+		config.RootNamespace = rootNamespace;
 	}
 }
