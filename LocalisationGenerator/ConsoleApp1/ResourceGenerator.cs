@@ -102,7 +102,7 @@ public class ResourceGenerator {
 			File.WriteAllText( Path.Combine( path, $"{fileName}Strings.l12n.generated.cs" ), sb.ToString() );
 
 			foreach ( var (iso, locale) in summary.Locales ) {
-				var writer = new ResXResourceWriter( Path.Combine( path, $"{fileName}Strings.{iso}.resx" ) );
+				var writer = new ResXResourceWriter( Path.Combine( path, $"{fileName}Strings{(iso == config.DefaultLocale ? "" : $".{iso}")}.resx" ) );
 				bool any = false;
 
 				foreach ( var (shortKey, key) in ns.Keys ) {
