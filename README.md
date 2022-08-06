@@ -46,7 +46,7 @@ This is a simple tutorial you might want to include to explain how to contribute
 
 There are 2 programs you will need to translate this project:
 * Git (if you know how to use it) or Github Desktop
-* [o!f-l12n (Localisation generator for osu!framework)](https://github.com/Flutterish/l12n-for-osu-framework/releases)
+* [o!f-l12n (Localisation generator for osu!framework)](https://github.com/Flutterish/l12n-generator-for-osu-framework/releases)
 
 First, fork and clone this repository.
 Forking creates a copy independent of this repository that we will edit and later merge back into this repository. Cloning does the same, but to your machine rather than on github.
@@ -58,7 +58,7 @@ Forking creates a copy independent of this repository that we will edit and late
 Open the folder you cloned it to (Repository -> Show in Explorer) and find a file called `l12nConfig.json`.
 Generally it will be in a `Localisation` folder
 
-Run the [o!f-l12n](https://github.com/Flutterish/l12n-for-osu-framework/releases) program 
+Run the [o!f-l12n](https://github.com/Flutterish/l12n-generator-for-osu-framework/releases) program 
 and select [Select path] - choose the path to the folder containing the `l12nConfig.json` file
 
 Everything else will already be set up for you by the developer, you can now
