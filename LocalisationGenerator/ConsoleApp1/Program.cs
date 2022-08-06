@@ -197,34 +197,27 @@ public class Program {
 
 				Split();
 				WriteLine( "Keys:" );
-				void tree ( LocaleNamespace ns, int indent = 0, bool leftLine = true ) {
+				void tree ( LocaleNamespace ns, string indent = "" ) {
 					int c = 0;
 					bool isLast () {
 						return c == ns.Keys.Count + ns.Nested.Count;
 					}
-					string rept ( string str, int count ) {
-						var r = "";
-						for ( int i = 0; i < count; i++ )
-							r += str;
-
-						return r;
-					}
 					foreach ( var (shortKey, key) in ns.Keys.OrderBy( x => x.Key ) ) {
 						c++;
 						var str = summary!.Keys[key];
-						WriteLine( rept( leftLine ? "│ " : "  ", indent ) + ( isLast() ? "└─" : "├─" ) + Yellow( shortKey ) + ": " + bar( (float)str.LocalisedIn.Count / summary.Locales.Count ) );
+						WriteLine( indent + ( isLast() ? "└─" : "├─" ) + Yellow( shortKey ) + ": " + bar( (float)str.LocalisedIn.Count / summary.Locales.Count ) );
 						var lang = str.LocalisedIn.FirstOrDefault( x => x == mainlocale ) ?? str.LocalisedIn.First();
-						WriteLine( rept( leftLine ? "│ " : "  ", indent ) + ( isLast() ? "   " : "│ ") + $"\tExample [{lang.ISO}]: {Red( "\"" )}{lang.Strings[key].ColoredValue}{Red( "\"" )}" );
+						WriteLine( indent + ( isLast() ? "   " : "│ ") + $"\tExample [{lang.ISO}]: {Red( "\"" )}{lang.Strings[key].ColoredValue}{Red( "\"" )}" );
 						if ( str.NotLocalisedIn.Any() ) {
-							WriteLine( rept( leftLine ? "│ " : "  ", indent ) + ( isLast() ? "   " : "│ " ) + $"\tNot localised in: {string.Join( ", ", str.NotLocalisedIn.Select( x => Yellow( $"{x.Name} [{x.ISO}]" ) ) )}" );
+							WriteLine( indent + ( isLast() ? "   " : "│ " ) + $"\tNot localised in: {string.Join( ", ", str.NotLocalisedIn.Select( x => Yellow( $"{x.Name} [{x.ISO}]" ) ) )}" );
 						}
 						if ( str.Arguments.Any() )
-							WriteLine( rept( leftLine ? "│ " : "  ", indent ) + ( isLast() ? "   " : "│ " ) + $"\tArguments: {string.Join( ", ", str.Arguments.Select( x => $"{{{x.Key}}}" ) )}" );
+							WriteLine( indent + ( isLast() ? "   " : "│ " ) + $"\tArguments: {string.Join( ", ", str.Arguments.Select( x => $"{{{x.Key}}}" ) )}" );
 					}
 					foreach ( var (name, nested) in ns.Nested.OrderBy( x => x.Key ) ) {
 						c++;
-						WriteLine( rept( leftLine ? "│ " : "  ", indent ) + (isLast() ? "└─" : "├─") + name );
-						tree( nested, indent + 1, !isLast() );
+						WriteLine( indent + (isLast() ? "└─" : "├─") + name );
+						tree( nested, indent + (isLast() ? "  " : "│ ") );
 					}
 				}
 				tree( summary.RootNamespace );
