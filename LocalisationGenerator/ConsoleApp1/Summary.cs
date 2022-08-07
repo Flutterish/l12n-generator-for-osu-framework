@@ -39,7 +39,7 @@ public class Summary {
 
 		foreach ( var (key, keySummary) in Keys ) {
 			var ns = RootNamespace;
-			var split = key.Split( '.', '/' );
+			var split = key.Split( '.' );
 
 			if ( split.Length > 1 ) {
 				foreach ( var nested in split[..^1] ) {

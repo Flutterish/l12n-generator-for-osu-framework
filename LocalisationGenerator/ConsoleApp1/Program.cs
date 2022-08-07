@@ -140,12 +140,12 @@ public class Program {
 				}
 			}
 			else if ( option == rename ) {
-				var key = Select( localesContainingKey.Keys.OrderBy( x => x ).ToList(), k => $"{k} [in {localesContainingKey[k].Count}/{locales.Count} locales]", allowCancel: true );
+				var key = Select( localesContainingKey.Keys.OrderBy( x => x ).ToList(), k => $"{Yellow(k)} [in {localesContainingKey[k].Count}/{locales.Count} locales]", allowCancel: true );
 				if ( key == null )
 					continue;
 
 				WriteLine( "Key:" );
-				WriteLine( $"You can group keys with dots or slashes, for example {Yellow( "chat.send" )} or {Yellow( "options/general" )}" );
+				WriteLine( $"You can group keys with dots, for example {Yellow( "chat.send" )} or {Yellow( "options.general" )}" );
 				var newKey = Prompt().Trim();
 				if ( key == newKey ) {
 					Error( "That's the same name" );
@@ -313,7 +313,7 @@ public class Program {
 		File.WriteAllText( configPath, JsonConvert.SerializeObject( config, Newtonsoft.Json.Formatting.Indented ) );
 	}
 
-	public static readonly Regex keyRegex = new( "^[a-zA-Z_][a-zA-Z_0-9-]*([./][a-zA-Z_][a-zA-Z_0-9-]*)*$", RegexOptions.Compiled );
+	public static readonly Regex keyRegex = new( "^[a-zA-Z_][a-zA-Z_0-9-]*(\\.[a-zA-Z_][a-zA-Z_0-9-]*)*$", RegexOptions.Compiled );
 	Locale currentLocale = null!;
 	void Edit ( Locale locale ) {
 		currentLocale = locale;
@@ -413,7 +413,7 @@ public class Program {
 			}
 			else if ( option == add ) {
 				WriteLine( "Key:" );
-				WriteLine( $"You can group keys with dots or slashes, for example {Yellow("chat.send")} or {Yellow("options/general")}" );
+				WriteLine( $"You can group keys with dots, for example {Yellow("chat.send")} or {Yellow("options.general")}" );
 				var key = Prompt().Trim();
 				if ( locale.Strings.ContainsKey( key ) )
 					Error( "Key already exists" );
