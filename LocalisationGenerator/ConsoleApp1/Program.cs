@@ -102,6 +102,7 @@ public class Program {
 		string add = "Add new locale";
 		string edit = "Edit locale";
 		string rename = "Rename key";
+		string delete = Red("Delete key");
 		string export = $"Generate {esc( 'G' )}.cs{esc( '\0' )} and {esc( 'G' )}.resx{esc( '\0' )} files";
 		string link = $"Link a {Green(".csproj")} file";
 		string summarise = $"Summary";
@@ -114,8 +115,10 @@ public class Program {
 			options.Clear();
 			options.Add( edit );
 			options.Add( add );
-			if ( localesContainingKey.Any() )
+			if ( localesContainingKey.Any() ) {
 				options.Add( rename );
+				options.Add( delete );
+			}
 			options.Add( summarise );
 			if ( !string.IsNullOrWhiteSpace( config.ProjectPath ) )
 				options.Add( export );
@@ -187,6 +190,24 @@ public class Program {
 					}
 
 					Save( onlyCurrent: false );
+				}
+			}
+			else if ( option == delete ) {
+				var key = Select( localesContainingKey.Keys.OrderBy( x => x ).ToList(), k => $"{Yellow( k )} [in {localesContainingKey[k].Count}/{locales.Count} locales]", allowCancel: true );
+				if ( key == null )
+					continue;
+
+				WriteLine( $"Are you sure you want to delete this key? Type `{Yellow(key)}` to confirm" );
+				if ( Prompt() == key ) {
+					foreach ( var i in localesContainingKey[key] ) {
+						i.Strings.Remove( key );
+					}
+					localesContainingKey.Remove( key );
+					WriteLine( Red("Removed") );
+					Save( onlyCurrent: false );
+				}
+				else {
+					WriteLine( "Cancelled" );
 				}
 			}
 			else if ( option == summarise ) {
