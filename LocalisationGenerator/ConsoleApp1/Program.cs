@@ -3,12 +3,14 @@ using Newtonsoft.Json;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Xml;
 
 public class Program {
 	public static void Main () {
-		AnsiFix.Fix();
+		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) )
+			AnsiFix.Fix();
 		new Program().Run();
 	}
 
