@@ -39,7 +39,7 @@ public class ResourceGenerator {
 		Dictionary<string, string> argNames = new();
 		void saveNamespace ( string path, string name, string fileName, LocaleNamespace ns ) {
 			foreach ( var i in ns.Nested ) {
-				var key = i.Key.Pascalize();
+				var key = pascalise(i.Key);
 				saveNamespace( path, $"{name}.{key}", $"{fileName}{key}.", i.Value );
 			}
 
