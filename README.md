@@ -25,17 +25,8 @@ generate the final .cs and .resx files
   * Select [Somewhere else] and pick the path to the repository
 * Select [Local]
 
-To generate .cs and .resx files can't really [Link a .csproj file] because that would require
-crossing the file boundary between 2 repositories.
-Instead, each person that wants to generate the .cs and .resx files will need to create a new project
-outside both repositories like this:
-* Run the program and create a new project:
-  * Select [Somewhere else] and pick wherever (outside both repositories)
-* [Link] the .csproj (main repository)
-* Click [Okay]
-* Select [Somewhere else] and pick the location in the second repository where the .json files are
-
-After this setup you can [Generate .cs and .resx files]
+The easiest way to generate source files is to quickly [Link a .csproj file]
+and [Generate .cs and .resx files], without pushing the change to the config file
 
 ---
 
