@@ -28,32 +28,35 @@ public class ResourceGenerator {
 
 		rootPath = Path.Combine( rootPath, ns.Replace( '.', Path.DirectorySeparatorChar ) );
 		Directory.CreateDirectory( rootPath );
+		var resxPath = Path.Combine( rootPath, "Resx" );
+		Directory.CreateDirectory( resxPath );
 
-		foreach ( var i in Directory.EnumerateFiles( rootPath, "*.l12n.generated.cs" ) ) {
+		foreach ( var i in Directory.GetFiles( rootPath, "*.l12n.generated.cs", SearchOption.AllDirectories ) ) {
 			File.Delete( i );
 		}
-		foreach ( var i in Directory.EnumerateFiles( rootPath, "*.resx" ) ) {
+		foreach ( var i in Directory.GetFiles( rootPath, "*.resx", SearchOption.AllDirectories ) ) {
 			File.Delete( i );
 		}
 
 		Dictionary<string, string> argNames = new();
-		void saveNamespace ( string path, string name, string fileName, LocaleNamespace ns ) {
+		void saveNamespace ( string path, string name, IEnumerable<string> location, LocaleNamespace ns ) {
 			foreach ( var i in ns.Nested ) {
 				var key = pascalise(i.Key);
-				saveNamespace( path, $"{name}.{key}", $"{fileName}{key}.", i.Value );
+				saveNamespace( path, $"{name}.{key}", location.Append( key ), i.Value );
 			}
 
 			if ( !ns.Keys.Any() )
 				return;
 
+			var @namespace = string.Join( ".", location.Prepend( config.Namespace ).Take( Math.Max( 1, location.Count() ) ) );
 			StringBuilder sb = new();
 			sb.AppendLine( "// This file is auto-generated" );
 			sb.AppendLine( "// Do not edit it manually as it will be overwritten" );
 			sb.AppendLine();
 			sb.AppendLine( "using osu.Framework.Localisation;" );
 			sb.AppendLine();
-			sb.AppendLine( $"namespace {name} {{" );
-			sb.AppendLine( $"	public static class Strings {{" );
+			sb.AppendLine( $"namespace {@namespace} {{" );
+			sb.AppendLine( $"	public static class {(location.Any() ? location.Last() : "")}Strings {{" );
 			sb.AppendLine( $"		private const string PREFIX = {JsonConvert.SerializeObject($"{name}.Strings" )};" );
 			sb.AppendLine( "		private static string getKey( string key ) => $\"{PREFIX}:{key}\";" );
 			foreach ( var (shortKey, key) in ns.Keys ) {
@@ -99,10 +102,10 @@ public class ResourceGenerator {
 			sb.AppendLine( "	}" );
 			sb.AppendLine( "}" );
 
-			File.WriteAllText( Path.Combine( path, $"{fileName}Strings.l12n.generated.cs" ), sb.ToString() );
+			File.WriteAllText( Path.Combine( path, $"{string.Join( '.', location )}Strings.l12n.generated.cs" ), sb.ToString() );
 
 			foreach ( var (iso, locale) in summary.Locales ) {
-				var writer = new ResXResourceWriter( Path.Combine( path, $"{fileName}Strings{(iso == config.DefaultLocale ? "" : $".{iso}")}.resx" ) );
+				using var writer = new ResXResourceWriter( Path.Combine( resxPath, $"{(location.Any() ? string.Join( '.', location.Append("") ) : "")}Strings{(iso == config.DefaultLocale ? "" : $".{iso}")}.resx" ) );
 				bool any = false;
 
 				foreach ( var (shortKey, key) in ns.Keys ) {
@@ -116,6 +119,6 @@ public class ResourceGenerator {
 					writer.Generate();
 			}
 		}
-		saveNamespace( rootPath, config.Namespace, "", summary.RootNamespace );
+		saveNamespace( rootPath, config.Namespace, Array.Empty<string>(), summary.RootNamespace );
 	}
 }
