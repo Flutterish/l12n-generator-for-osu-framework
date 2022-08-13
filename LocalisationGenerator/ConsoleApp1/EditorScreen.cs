@@ -1,5 +1,6 @@
 ﻿using LocalisationGenerator.Curses;
 using LocalisationGenerator.Tabs;
+using LocalisationGenerator.Ui;
 
 namespace LocalisationGenerator;
 
@@ -8,6 +9,7 @@ public class EditorScreen : ConsoleWindow {
 	KeyTreeTab right;
 	Program program;
 	Window focused;
+	TextBox textBox = new() { Placeholder = "Text goes here..." };
 	public EditorScreen ( Program program ) {
 		this.program = program;
 
@@ -84,6 +86,10 @@ public class EditorScreen : ConsoleWindow {
 		left.Draw();
 		right.Draw();
 
+		textBox.Draw( left, wrap: true );
+		var (from, to) = textBox.CaretPosition;
+		(CursorX, CursorY) = (to.x + 1, to.y);
+
 		left.PopScissors();
 		right.PopScissors();
 	}
@@ -102,7 +108,7 @@ public class EditorScreen : ConsoleWindow {
 				focused = right;
 			}
 			else {
-				break;
+				textBox.Handle( key );
 			}
 		}
 	}

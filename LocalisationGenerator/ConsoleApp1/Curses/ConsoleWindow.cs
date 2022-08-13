@@ -114,6 +114,12 @@ public class ConsoleWindow : Window {
 			}
 		}
 
+		updater.Append( csi );
+		updater.Append( CursorY + 1 );
+		updater.Append( ';' );
+		updater.Append( CursorX + 1 );
+		updater.Append( 'H' );
+
 		Console.Write( updater.ToString() );
 	}
 

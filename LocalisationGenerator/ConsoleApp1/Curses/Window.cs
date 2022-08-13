@@ -65,7 +65,7 @@ public class Window {
 		attrStack.Push( Attribute.Normal );
 		scissorStack.Push( null );
 
-		buffer = new Symbol[width,height];
+		buffer = new Symbol[width, height];
 		Width = width;
 		Height = height;
 		Clear();
@@ -98,7 +98,7 @@ public class Window {
 		var empty = EmptySymbol with { Char = ' ', Bg = ConsoleColor.Black, Fg = ConsoleColor.Gray };
 		for ( int x = 0; x < width; x++ ) {
 			for ( int y = 0; y < height; y++ ) {
-				newBuffer[x, y] = (x < Width && y < Height) ? buffer[x, y] : empty;
+				newBuffer[x, y] = ( x < Width && y < Height ) ? buffer[x, y] : empty;
 			}
 		}
 
@@ -121,22 +121,27 @@ public class Window {
 		}
 	}
 
-	public void Write ( Symbol s ) {
+	public void Write ( Symbol s, LayoutCallback? cb = null, int printableIndex = 0 ) {
 		var rect = DrawRect;
 
 		if ( s.Char == '\n' ) {
-			CursorY = Math.Min( rect.Height - 1, CursorY + 1 );
-			CursorX = 0;
+			WriteLine();
+			cb?.Invoke( printableIndex, (rect.X + CursorX - 1, rect.Y + CursorY), s );
 		}
 		else {
 			if ( CursorX >= rect.Width ) {
-				CursorY = Math.Min( rect.Height - 1, CursorY + 1 );
-				CursorX = 0;
+				WriteLine();
 			}
 
+			cb?.Invoke( printableIndex, (rect.X + CursorX, rect.Y + CursorY), s );
 			buffer[CursorX + rect.X, CursorY + rect.Y] = s;
 			CursorX++;
 		}
+	}
+
+	public void WriteLine () {
+		CursorY = Math.Min( DrawRect.Height - 1, CursorY + 1 );
+		CursorX = 0;
 	}
 
 	public void Write ( char c ) {
@@ -146,12 +151,20 @@ public class Window {
 	void applyEscape ( char e ) {
 		if ( e == ':' )
 			PopForeground();
+		else if ( e == ';' )
+			PopBackground();
 		else if ( e == '|' )
 			PopAttribute();
 		else if ( e == '_' ) {
 			PushAttribute( e switch {
 				'_' => Attribute.Underline,
 				_ => Attribute.Normal
+			} );
+		}
+		else if ( char.IsLower( e ) ) {
+			PushBackground( e switch {
+				'r' => ConsoleColor.Red,
+				_ => AnsiColor.Gray
 			} );
 		}
 		else {
@@ -167,8 +180,11 @@ public class Window {
 		}
 	}
 
+	public delegate void LayoutCallback ( int printableIndex, (int x, int y) position, Symbol symbol, bool truncated = false );
 	static readonly Regex wordRegex = new( @"(?:[\S-[/]]|\u0001.)+", RegexOptions.Compiled );
-	public void Write ( string str, AnsiColor? fg = null, AnsiColor? bg = null, Attribute? attr = null, bool wrap = true ) {
+	public void Write ( string str, AnsiColor? fg = null, AnsiColor? bg = null, Attribute? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
+		int printableIndex = 0;
+
 		if ( fg is AnsiColor f )
 			PushForeground( f );
 		if ( bg is AnsiColor b )
@@ -180,15 +196,22 @@ public class Window {
 		var rect = DrawRect;
 
 		bool justWrapped = false;
+
 		void writeString ( string str ) {
 			if ( str.Length == 0 )
 				return;
 
-			foreach ( char c in (( justWrapped && CursorX == 0 ) || ( CursorX >= rect.Width )) && str[0] == ' ' ? str[1..] : str ) {
-				if ( !wrap && c != '\n' && CursorX >= rect.Width )
-					continue;
+			bool deleteSpace = ( ( justWrapped && CursorX == 0 ) || ( CursorX >= rect.Width ) ) && str[0] == ' ';
+			if ( deleteSpace )
+				cb?.Invoke( printableIndex++, (rect.X + CursorX, rect.Y + CursorY), empty with { Char = ' ' }, truncated: true );
 
-				Write( empty with { Char = c } );
+			foreach ( char c in deleteSpace ? str[1..] : str ) {
+				if ( !wrap && c != '\n' && CursorX >= rect.Width ) {
+					cb?.Invoke( printableIndex++, (rect.X + CursorX, rect.Y + CursorY), empty with { Char = c }, truncated: true );
+					continue;
+				}
+
+				Write( empty with { Char = c }, cb, printableIndex++ );
 			}
 		}
 
@@ -199,8 +222,9 @@ public class Window {
 				var word = words[i - 1].Value;
 				var parts = word.Split( escChar );
 				var length = word.Length - (parts.Length - 1) * 2;
-				if ( CursorX + length > rect.Width && wrap ) {
-					Write( empty with { Char = '\n' } );
+				if ( CursorX != 0 && CursorX + length > rect.Width && wrap ) {
+					CursorY = Math.Min( rect.Height - 1, CursorY + 1 );
+					CursorX = 0;
 					justWrapped = true;
 				}
 
@@ -228,9 +252,8 @@ public class Window {
 		if ( attr is Attribute )
 			PopAttribute();
 	}
-
-	public void WriteLine ( string str, AnsiColor? fg = null, AnsiColor? bg = null, Attribute? attr = null, bool wrap = true ) {
-		Write( str + '\n', fg, bg, attr, wrap );
+	public void WriteLine ( string str, AnsiColor? fg = null, AnsiColor? bg = null, Attribute? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
+		Write( str + '\n', fg, bg, attr, wrap, cb );
 	}
 
 	public void DrawBorder ( char top = '─', char bottom = '─', char left = '│', char right = '│', 
@@ -269,6 +292,9 @@ public class Window {
 		=> $"{esc( 'C' )}{str}{esc( ':' )}";
 	public static string Blue ( string str )
 		=> $"{esc( 'B' )}{str}{esc( ':' )}";
+
+	public static string RedBg ( string str )
+		=> $"{esc( 'r' )}{str}{esc( ';' )}";
 
 	public static string Underscore ( string str )
 		=> $"{esc( '_' )}{str}{esc( '|' )}";
