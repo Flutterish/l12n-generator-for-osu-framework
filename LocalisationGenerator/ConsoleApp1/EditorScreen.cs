@@ -1,18 +1,51 @@
 ﻿using LocalisationGenerator.Curses;
+using LocalisationGenerator.Tabs;
 
 namespace LocalisationGenerator;
 
 public class EditorScreen : ConsoleWindow {
-	Window left;
-	Window right;
+	LocalisationTab left;
+	KeyTreeTab right;
 	Program program;
 	Window focused;
 	public EditorScreen ( Program program ) {
 		this.program = program;
 
 		var width = (int)( Width * 0.75 );
-		left = new Window( width, Height );
-		right = new Window( Width - width, Height ) { X = width };
+		left = new();
+		right = new( new( "" ) {
+			Nested = new() {
+				["Mod"] = new( "Mod" ) {
+					Keys = new() {
+						["ModA"] = "Mod.ModA",
+						["ModB"] = "Mod.ModB"
+					}
+				},
+				["Setting"] = new( "Setting" ) {
+					Keys = new() {
+						["NoteSize"] = "Setting.NoteSize",
+						["PlayfieldOpacity"] = "Setting.PlayfieldOpacity"
+					}
+				},
+				["Tooltips"] = new( "Tooltips" ) {
+					Nested = new() {
+						["Extra"] = new( "Tooltips.Extra" ) {
+							Keys = new() {
+								["Magic"] = "Tooltips.Extra.Magic"
+							}
+						}
+					}
+				},
+				["CollasedCategory"] = new( "CollasedCategory" ) {
+
+				},
+				["ExpandedCategory"] = new( "ExpandedCategory" ) {
+					Keys = new() {
+						["Empty"] = "ExpandedCategory.Empty"
+					}
+				}
+			}
+		} );
 		AttachWindow( left );
 		AttachWindow( right );
 
@@ -20,12 +53,10 @@ public class EditorScreen : ConsoleWindow {
 	}
 
 	protected override void Draw () {
-		left.Scissors = null;
-		right.Scissors = null;
 		left.Clear();
 		right.Clear();
 
-		var width = (int)( Width * 0.75 );
+		var width = (int)( Width * (focused == left ? 0.7 : 0.3) );
 		left.Resize( width, Height );
 		right.Resize( Width - width, Height );
 		right.X = width;
@@ -45,10 +76,16 @@ public class EditorScreen : ConsoleWindow {
 		label( left, "  F1  " );
 		label( right, "  F2  " );
 
-		right.Scissors = right.LocalRect with { X = 1, Y = 1, Width = right.Width - 2, Height = right.Height - 2 };
-		left.Scissors = left.LocalRect with { X = 1, Y = 1, Width = left.Width - 2, Height = left.Height - 2 };
+		right.PushScissors( right.LocalRect with { X = 1, Y = 1, Width = right.Width - 2, Height = right.Height - 2 } );
+		left.PushScissors( left.LocalRect with { X = 1, Y = 1, Width = left.Width - 2, Height = left.Height - 2 } );
 		right.SetCursor( 0, 0 );
 		left.SetCursor( 0, 0 );
+
+		left.Draw();
+		right.Draw();
+
+		left.PopScissors();
+		right.PopScissors();
 	}
 
 	public void Run () {

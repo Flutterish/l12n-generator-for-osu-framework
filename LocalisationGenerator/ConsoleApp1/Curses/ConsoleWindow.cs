@@ -42,7 +42,6 @@ public class ConsoleWindow : Window {
 
 	protected virtual void Draw () { }
 
-	const string esc = "\u001B";
 	const string csi = "\u001B[";
 	StringBuilder updater = new();
 	Symbol selectedAnsi = new Symbol { Fg = Console.ForegroundColor, Bg = Console.BackgroundColor, Attributes = Attribute.Normal };
@@ -90,7 +89,22 @@ public class ConsoleWindow : Window {
 							updater.Append( 'm' );
 						}
 						if ( selectedAnsi.Attributes != symbol.Attributes ) {
-							// TODO
+							if ( symbol.Attributes == Attribute.Normal ) {
+								updater.Append( csi );
+								updater.Append( 'm' );
+							}
+							else {
+								for ( int i = 1; i <= 9; i++ ) {
+									bool isActive = ((int)selectedAnsi.Attributes & (1 << i)) != 0;
+									bool shouldBe = ((int)symbol.Attributes & (1 << i)) != 0;
+
+									if ( isActive != shouldBe ) {
+										updater.Append( csi );
+										updater.Append( isActive ? (20 + i) : i );
+										updater.Append( 'm' );
+									}
+								}
+							}
 						}
 
 						selectedAnsi = symbol;
