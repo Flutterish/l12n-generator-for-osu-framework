@@ -1,6 +1,4 @@
-﻿using ICSharpCode.Decompiler.Util;
-using Newtonsoft.Json.Linq;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 namespace LocalisationGenerator.Curses;
 
@@ -145,36 +143,31 @@ public class Window {
 		Write( EmptySymbol with { Char = c } );
 	}
 
-	static readonly Regex wordRegex = new( @"\S+" );
-	void writeWords ( Symbol style, string str, bool wrap = true ) {
-		var rect = DrawRect;
-
-		var split = wordRegex.Split( str );
-		var matches = wordRegex.Matches( str );
-		for ( int i = 0; i < split.Length; i++ ) {
-			if ( i != 0 ) {
-				var word = matches[i - 1].Value;
-				if ( CursorX + word.Length > rect.Width && wrap ) {
-					Write( style with { Char = '\n' } );
-				}
-
-				foreach ( char c in word ) {
-					if ( !wrap && CursorX >= rect.Width )
-						break;
-
-					Write( style with { Char = c } );
-				}
-			}
-
-			foreach ( char c in split[i] ) {
-				if ( !wrap && c != '\n' && CursorX >= rect.Width )
-					continue;
-
-				Write( style with { Char = c } );
-			}
+	void applyEscape ( char e ) {
+		if ( e == ':' )
+			PopForeground();
+		else if ( e == '|' )
+			PopAttribute();
+		else if ( e == '_' ) {
+			PushAttribute( e switch {
+				'_' => Attribute.Underline,
+				_ => Attribute.Normal
+			} );
+		}
+		else {
+			PushForeground( e switch {
+				'G' => ConsoleColor.Green,
+				'Y' => ConsoleColor.Yellow,
+				'R' => ConsoleColor.Red,
+				'C' => ConsoleColor.Cyan,
+				'B' => ConsoleColor.Blue,
+				'N' => ConsoleColor.DarkGray,
+				_ => AnsiColor.White
+			} );
 		}
 	}
 
+	static readonly Regex wordRegex = new( @"(?:[\S-[/]]|\u0001.)+", RegexOptions.Compiled );
 	public void Write ( string str, AnsiColor? fg = null, AnsiColor? bg = null, Attribute? attr = null, bool wrap = true ) {
 		if ( fg is AnsiColor f )
 			PushForeground( f );
@@ -184,39 +177,48 @@ public class Window {
 			PushAttribute( a );
 
 		var empty = EmptySymbol;
-		var parts = str.Split( escChar );
-		for ( int i = 0; i < parts.Length; i++ ) {
-			if ( i > 0 ) {
-				var k = parts[i][0];
+		var rect = DrawRect;
 
-				if ( k == ':' )
-					PopForeground();
-				else if ( k == '|' )
-					PopAttribute();
-				else if ( k == '_' ) {
-					PushAttribute( k switch {
-						'_' => Attribute.Underline,
-						_ => Attribute.Normal
-					} );
-				}
-				else {
-					PushForeground( k switch {
-						'G' => ConsoleColor.Green,
-						'Y' => ConsoleColor.Yellow,
-						'R' => ConsoleColor.Red,
-						'C' => ConsoleColor.Cyan,
-						'B' => ConsoleColor.Blue,
-						'N' => ConsoleColor.DarkGray,
-						_ => AnsiColor.White
-					} );
-				}
-				empty = EmptySymbol;
+		bool justWrapped = false;
+		void writeString ( string str ) {
+			if ( str.Length == 0 )
+				return;
 
-				writeWords( empty, parts[i][1..], wrap );
+			foreach ( char c in (( justWrapped && CursorX == 0 ) || ( CursorX >= rect.Width )) && str[0] == ' ' ? str[1..] : str ) {
+				if ( !wrap && c != '\n' && CursorX >= rect.Width )
+					continue;
+
+				Write( empty with { Char = c } );
 			}
-			else {
-				writeWords( empty, parts[i], wrap );
+		}
+
+		var whitespaces = wordRegex.Split( str );
+		var words = wordRegex.Matches( str );
+		for ( int i = 0; i < whitespaces.Length; i++ ) {
+			if ( i != 0 ) {
+				var word = words[i - 1].Value;
+				var parts = word.Split( escChar );
+				var length = word.Length - (parts.Length - 1) * 2;
+				if ( CursorX + length > rect.Width && wrap ) {
+					Write( empty with { Char = '\n' } );
+					justWrapped = true;
+				}
+
+				for ( int j = 0; j < parts.Length; j++ ) {
+					if ( j > 0 ) {
+						applyEscape( parts[j][0] );
+						empty = EmptySymbol;
+
+						writeString( parts[j][1..] );
+					}
+					else {
+						writeString( parts[j] );
+					}
+				}
 			}
+
+			writeString( whitespaces[i] );
+			justWrapped = false;
 		}
 
 		if ( fg is AnsiColor )
