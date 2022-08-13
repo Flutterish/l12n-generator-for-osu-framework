@@ -3,15 +3,15 @@ using Newtonsoft.Json;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Xml;
 
 public class Program {
 	public static void Main () {
-		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) )
-			AnsiFix.Fix();
-		new Program().Run();
+		new EditorScreen( new Program() ).Run();
+		//if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) )
+		//	AnsiFix.Fix();
+		//new Program().Run();
 	}
 
 	Dictionary<string, Locale> locales = new();

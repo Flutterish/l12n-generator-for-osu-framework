@@ -1,9 +1,7 @@
 ﻿using Humanizer;
 using ICSharpCode.Decompiler.Util;
-using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 using System.Text;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace LocalisationGenerator;
 
