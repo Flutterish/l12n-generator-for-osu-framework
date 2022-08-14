@@ -3,7 +3,7 @@
 
 using LocalisationGenerator.Curses;
 
-namespace LocalisationGenerator.Ui;
+namespace LocalisationGenerator.UI;
 
 public class TextBox {
 	public string Placeholder = string.Empty;
@@ -23,7 +23,7 @@ public class TextBox {
 	public string SelectedText => selectionLength > 0 ? Text.Substring( selectionLeft, selectionLength ) : string.Empty;
 
 	public ((int x, int y) from, (int x, int y) to) CaretPosition
-		=> (PositionAtIndex(selectionStart), PositionAtIndex(selectionEnd));
+		=> (PositionAtIndex( selectionStart ), PositionAtIndex( selectionEnd ));
 
 	public (int x, int y) PositionAtIndex ( int i ) {
 		if ( lastPrintedCount < i )
@@ -37,19 +37,17 @@ public class TextBox {
 		lastPrintedCount = 0;
 		lastLayout[0] = (window.DrawRect.X + window.CursorX - 1, window.DrawRect.Y + window.CursorY, true);
 
-		if ( string.IsNullOrEmpty( text ) ) {
-			window.Write( Placeholder, fg: ConsoleColor.DarkGray, wrap: wrap );
-		}
+		if ( string.IsNullOrEmpty( text ) ) window.Write( Placeholder, fg: ConsoleColor.DarkGray, wrap: wrap );
 		else {
 			while ( lastLayout.Count <= text.Length )
 				lastLayout.Add( (0, 0, true) );
 
-			window.Write( $"{text[..selectionLeft]}{Window.RedBg(Window.Black(SelectedText))}{text[selectionRight..]}", performLayout: true, wrap: wrap, cb: (index, pos, symbol, truncated) => {
+			window.Write( $"{text[..selectionLeft]}{Window.RedBg( Window.Black( SelectedText ) )}{text[selectionRight..]}", performLayout: true, wrap: wrap, cb: ( index, pos, symbol, truncated ) => {
 				lastLayout[index + 1] = (pos.x, pos.y, truncated);
 				lastPrintedCount = index + 1;
 			} );
 
-			retainedCursorX ??= PositionAtIndex(selectionEnd).x;
+			retainedCursorX ??= PositionAtIndex( selectionEnd ).x;
 		}
 	}
 
@@ -172,7 +170,7 @@ public class TextBox {
 	protected int GetBackwardWordAmount () {
 		if ( selectionEnd == 0 )
 			return 0;
-		
+
 		int count = -1;
 		int index = selectionEnd - 1;
 		while ( index > 0 ) {
@@ -266,9 +264,7 @@ public class TextBox {
 		if ( selectionLength == 0 )
 			selectionEnd = Math.Clamp( selectionStart + amount, 0, text.Length );
 
-		if ( selectionLength > 0 ) {
-			removeSelection();
-		}
+		if ( selectionLength > 0 ) removeSelection();
 	}
 
 	private int selectionStart;

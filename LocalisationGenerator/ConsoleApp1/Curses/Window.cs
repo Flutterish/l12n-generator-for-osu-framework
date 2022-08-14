@@ -1,6 +1,4 @@
-﻿using LocalisationGenerator.Ui;
-
-namespace LocalisationGenerator.Curses;
+﻿namespace LocalisationGenerator.Curses;
 
 public class Window {
 	public int X;

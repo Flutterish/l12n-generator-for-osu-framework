@@ -1,7 +1,7 @@
 ﻿using LocalisationGenerator.Curses;
 using System.Text.RegularExpressions;
 
-namespace LocalisationGenerator.Ui;
+namespace LocalisationGenerator.UI;
 
 public class TextLayout {
 	public List<Line> Lines = new();
@@ -32,16 +32,12 @@ public class TextLayout {
 			}
 
 			bool push = wordSplit && !whitespace && !isWordWhitespace;
-			if ( visible != isWordVisible ) {
-				push = true;
-			}
+			if ( visible != isWordVisible ) push = true;
 
-			if ( whitespace != isWordWhitespace ) {
-				push = true;
-			}
+			if ( whitespace != isWordWhitespace ) push = true;
 
 			if ( push && currentWord != "" ) {
-				lineWords.Add( new(currentWord, isWordVisible, isWordWhitespace) );
+				lineWords.Add( new( currentWord, isWordVisible, isWordWhitespace ) );
 				currentWord = "";
 			}
 
@@ -58,7 +54,7 @@ public class TextLayout {
 			x = 0;
 
 			if ( currentWord != "" && !IsEscapes.IsMatch( currentWord ) ) {
-				lineWords.Add( new(currentWord, isWordVisible, isWordWhitespace) );
+				lineWords.Add( new( currentWord, isWordVisible, isWordWhitespace ) );
 				currentWord = "";
 			}
 
@@ -78,9 +74,7 @@ public class TextLayout {
 
 			lineWidth = 0;
 			lineWords = new();
-			if ( removeSpace ) {
-				lineWords.Add( new(" ", false, true) );
-			}
+			if ( removeSpace ) lineWords.Add( new( " ", false, true ) );
 		}
 
 		void write ( char s ) {
@@ -89,9 +83,7 @@ public class TextLayout {
 				addLetter( s, visible: false );
 			}
 			else {
-				if ( x >= rect.Width ) {
-					newLine();
-				}
+				if ( x >= rect.Width ) newLine();
 
 				addLetter( s );
 				x++;
@@ -102,7 +94,7 @@ public class TextLayout {
 			if ( str.Length == 0 )
 				return;
 
-			bool deleteSpace = ( ( justWrapped && x == 0 ) || ( x >= rect.Width ) ) && str[0] == ' ';
+			bool deleteSpace = ( justWrapped && x == 0 || x >= rect.Width ) && str[0] == ' ';
 			if ( deleteSpace ) {
 				if ( x != 0 )
 					newLine();
@@ -174,20 +166,16 @@ public class Line {
 				j--;
 			}
 
-			DirectionBlocks.Add(( amountInBlock, isRtl ?? false ));
+			DirectionBlocks.Add( (amountInBlock, isRtl ?? false) );
 		}
 
 		for ( ; i < words.Count; i++ ) {
 			var word = words[i];
 
-			if ( word.IsWhitespace || TextLayout.IsEscapes.IsMatch( word.Value ) ) {
-				amountInBlock++;
-			}
+			if ( word.IsWhitespace || TextLayout.IsEscapes.IsMatch( word.Value ) ) amountInBlock++;
 			else {
 				bool isWordRtl = TextLayout.RtlRegex.IsMatch( word.Value );
-				if ( isRtl == null ) {
-					isRtl = isWordRtl;
-				}
+				if ( isRtl == null ) isRtl = isWordRtl;
 				else if ( isRtl != isWordRtl ) {
 					addBlock();
 					isRtl = isWordRtl;
@@ -198,9 +186,7 @@ public class Line {
 			}
 		}
 
-		if ( amountInBlock != 0 ) {
-			addBlock();
-		}
+		if ( amountInBlock != 0 ) addBlock();
 	}
 
 	public void Deconstruct ( out List<Word> words, out int width ) {

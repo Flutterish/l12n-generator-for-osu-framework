@@ -1,6 +1,6 @@
 ﻿using LocalisationGenerator.Curses;
 
-namespace LocalisationGenerator.Ui;
+namespace LocalisationGenerator.UI;
 
 public class Dropdown<T> {
 	public Func<T, string> Stringifier;
@@ -11,7 +11,7 @@ public class Dropdown<T> {
 	public string RightSelection = ">";
 
 	public Dropdown ( Func<T, string>? stringifier = null ) {
-		Stringifier = stringifier ?? (x => $"{x}");
+		Stringifier = stringifier ?? ( x => $"{x}" );
 	}
 
 	public void Draw ( Window window, int? heightLimit = null ) {
@@ -26,17 +26,13 @@ public class Dropdown<T> {
 		var otherHalf = height - half;
 		int from = Math.Max( 0, SelectedIndex - half );
 		int to = Math.Min( Options.Count, SelectedIndex + otherHalf );
-		if ( from == 0 ) {
-			to = Math.Min( Options.Count, from + height );
-		}
+		if ( from == 0 ) to = Math.Min( Options.Count, from + height );
 		else if ( to == Options.Count ) {
 			from = Math.Max( 0, to - height );
 		}
 
 		for ( int i = from; i < to; i++ ) {
-			if ( from != 0 && i == from ) {
-				window.WriteLine( Window.Yellow( " ^" ), wrap: false );
-			}
+			if ( from != 0 && i == from ) window.WriteLine( Window.Yellow( " ^" ), wrap: false );
 			else if ( to != Options.Count && i == to - 1 ) {
 				window.WriteLine( Window.Yellow( " v" ), wrap: false );
 			}

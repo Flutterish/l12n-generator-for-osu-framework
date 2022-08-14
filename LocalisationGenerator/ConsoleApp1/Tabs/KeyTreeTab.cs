@@ -1,5 +1,5 @@
 ﻿using LocalisationGenerator.Curses;
-using LocalisationGenerator.Ui;
+using LocalisationGenerator.UI;
 
 namespace LocalisationGenerator.Tabs;
 
@@ -12,7 +12,7 @@ public class KeyTreeTab : Window {
 	public Dropdown<(int i, string str)> Selector = new( i => i.str ) { LeftSelection = " > ", RightSelection = " < " };
 	List<(NamespaceTree tree, string? key)> options = new();
 	public void Draw () {
-		WriteLine( $"{Blue( "[<]" )}History{Blue( "[>]" )} {Red( "[R]" )}emove {Blue( "[A]" )}dd {Blue( "[L]" )}anguage (en)", performLayout: true );
+		WriteLine( $"{Blue( "[<]" )}History{Blue( "[>]" )} {Underscore(Red( "R" ))}emove Add {Underscore(Blue( "N" ))}ew/{Underscore(Yellow( "M" ))}issing {Underscore(Blue( "L" ))}anguage (en)", performLayout: true );
 		CursorX = 0;
 		options.Clear();
 		Selector.Options.Clear();

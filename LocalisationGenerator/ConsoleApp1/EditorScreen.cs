@@ -1,6 +1,6 @@
 ﻿using LocalisationGenerator.Curses;
 using LocalisationGenerator.Tabs;
-using LocalisationGenerator.Ui;
+using LocalisationGenerator.UI;
 
 namespace LocalisationGenerator;
 
@@ -11,10 +11,10 @@ public class EditorScreen : ConsoleWindow {
 	Window focused;
 	TextBox textBox = new() { Placeholder = "Text goes here..." };
 	Dropdown<string> dropdown = new() { Options = new() {
-		$"{Blue("[E]")}dit",
-		$"Change {Blue("[G]")}uide",
-		$"Edit {Blue("[C]")}ontext",
-		$"{Red("[F]")}inish"
+		$"{Underscore(Blue("E"))}dit",
+		$"Change {Underscore(Blue("G"))}uide",
+		$"Edit {Underscore(Blue("C"))}ontext",
+		$"{Underscore(Red("F"))}inish"
 	} };
 	public EditorScreen ( Program program ) {
 		this.program = program;

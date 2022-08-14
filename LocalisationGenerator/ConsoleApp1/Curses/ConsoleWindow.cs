@@ -1,5 +1,4 @@
-﻿using ICSharpCode.Decompiler.Util;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Text;
 
 namespace LocalisationGenerator.Curses;
