@@ -1,7 +1,7 @@
 ﻿namespace LocalisationGenerator.Curses;
 
 [Flags]
-public enum Attribute {
+public enum Attrib {
 	Normal = 0,
 	Bold = 1 << 1,
 	Dim = 1 << 2,

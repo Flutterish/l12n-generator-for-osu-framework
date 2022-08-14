@@ -1,4 +1,6 @@
-﻿namespace LocalisationGenerator.Curses;
+﻿using LocalisationGenerator.UI;
+
+namespace LocalisationGenerator.Curses;
 
 public class Window {
 	public int X;
@@ -42,11 +44,11 @@ public class Window {
 
 	Stack<AnsiColor> fgStack = new();
 	Stack<AnsiColor> bgStack = new();
-	Stack<Attribute> attrStack = new();
+	Stack<Attrib> attrStack = new();
 
 	public AnsiColor Background => bgStack.Peek();
 	public AnsiColor Foregreound => fgStack.Peek();
-	public Attribute Attributes => attrStack.Peek();
+	public Attrib Attributes => attrStack.Peek();
 
 	public Symbol EmptySymbol => new Symbol { Attributes = Attributes, Bg = Background, Fg = Foregreound };
 
@@ -60,7 +62,7 @@ public class Window {
 	public Window ( int width, int height ) {
 		fgStack.Push( ConsoleColor.Gray );
 		bgStack.Push( ConsoleColor.Black );
-		attrStack.Push( Attribute.Normal );
+		attrStack.Push( Attrib.Normal );
 		scissorStack.Push( null );
 
 		buffer = new Symbol[width, height];
@@ -75,7 +77,7 @@ public class Window {
 	public void PushBackground ( AnsiColor bg ) {
 		bgStack.Push( bg );
 	}
-	public void PushAttribute ( Attribute attr ) {
+	public void PushAttribute ( Attrib attr ) {
 		attrStack.Push( attr );
 	}
 	public void PopForeground () {
@@ -105,7 +107,7 @@ public class Window {
 		Height = height;
 	}
 
-	public void Clear ( char c = ' ', AnsiColor? fg = null, AnsiColor? bg = null, Attribute attributes = Attribute.Normal ) {
+	public void Clear ( char c = ' ', AnsiColor? fg = null, AnsiColor? bg = null, Attrib attributes = Attrib.Normal ) {
 		Clear( new Symbol { Char = c, Attributes = attributes, Bg = bg ?? ConsoleColor.Black, Fg = fg ?? ConsoleColor.Gray } );
 	}
 
@@ -153,8 +155,8 @@ public class Window {
 			PopAttribute();
 		else if ( e == '_' ) {
 			PushAttribute( e switch {
-				'_' => Attribute.Underline,
-				_ => Attribute.Normal
+				'_' => Attrib.Underline,
+				_ => Attrib.Normal
 			} );
 		}
 		else if ( char.IsLower( e ) ) {
@@ -178,14 +180,14 @@ public class Window {
 	}
 
 	public delegate void LayoutCallback ( int printableIndex, (int x, int y) position, Symbol symbol, bool truncated = false );
-	public void Write ( string str, bool performLayout = false, AnsiColor? fg = null, AnsiColor? bg = null, Attribute? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
+	public void Write ( string str, bool performLayout = false, AnsiColor? fg = null, AnsiColor? bg = null, Attrib? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
 		int printableIndex = -1;
 
 		if ( fg is AnsiColor f )
 			PushForeground( f );
 		if ( bg is AnsiColor b )
 			PushBackground( b );
-		if ( attr is Attribute a )
+		if ( attr is Attrib a )
 			PushAttribute( a );
 
 		var empty = EmptySymbol;
@@ -285,10 +287,10 @@ public class Window {
 			PopForeground();
 		if ( bg is AnsiColor )
 			PopBackground();
-		if ( attr is Attribute )
+		if ( attr is Attrib )
 			PopAttribute();
 	}
-	public void WriteLine ( string str, bool performLayout = false, AnsiColor? fg = null, AnsiColor? bg = null, Attribute? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
+	public void WriteLine ( string str, bool performLayout = false, AnsiColor? fg = null, AnsiColor? bg = null, Attrib? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
 		Write( str + '\n', performLayout, fg, bg, attr, wrap, cb );
 	}
 

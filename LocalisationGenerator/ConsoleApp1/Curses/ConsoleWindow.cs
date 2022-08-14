@@ -13,7 +13,7 @@ public class ConsoleWindow : Window {
 		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) )
 			AnsiFix.Fix();
 
-		var empty = new Symbol { Char = ' ', Fg = Console.ForegroundColor, Bg = Console.BackgroundColor, Attributes = Attribute.Normal };
+		var empty = new Symbol { Char = ' ', Fg = Console.ForegroundColor, Bg = Console.BackgroundColor, Attributes = Attrib.Normal };
 		for ( int x = 0; x < Width; x++ ) {
 			for ( int y = 0; y < Height; y++ ) {
 				pushed[x, y] = empty;
@@ -21,8 +21,8 @@ public class ConsoleWindow : Window {
 		}
 	}
 
-	void clearPushed () {
-		var empty = new Symbol { Char = ' ', Fg = Console.ForegroundColor, Bg = Console.BackgroundColor, Attributes = Attribute.Normal };
+	public void ClearPushed () {
+		var empty = new Symbol { Char = ' ', Fg = Console.ForegroundColor, Bg = Console.BackgroundColor, Attributes = Attrib.Normal };
 		for ( int x = 0; x < Width; x++ ) {
 			for ( int y = 0; y < Height; y++ ) {
 				pushed[x, y] = empty;
@@ -36,7 +36,7 @@ public class ConsoleWindow : Window {
 			var h = Console.WindowHeight;
 			Resize( w, h );
 			pushed = new Symbol[w, h];
-			clearPushed();
+			ClearPushed();
 
 			Draw();
 			Console.Clear();
@@ -48,7 +48,7 @@ public class ConsoleWindow : Window {
 
 	const string csi = "\u001B[";
 	StringBuilder updater = new();
-	Symbol selectedAnsi = new Symbol { Fg = Console.ForegroundColor, Bg = Console.BackgroundColor, Attributes = Attribute.Normal };
+	Symbol selectedAnsi = new Symbol { Fg = Console.ForegroundColor, Bg = Console.BackgroundColor, Attributes = Attrib.Normal };
 	public void Refresh () {
 		foreach ( var i in windows ) {
 			for ( int x = i.X; x < i.X + i.Width && x < Width; x++ ) {
@@ -93,7 +93,7 @@ public class ConsoleWindow : Window {
 							updater.Append( 'm' );
 						}
 						if ( selectedAnsi.Attributes != symbol.Attributes ) {
-							if ( symbol.Attributes == Attribute.Normal ) {
+							if ( symbol.Attributes == Attrib.Normal ) {
 								updater.Append( csi );
 								updater.Append( 'm' );
 							}

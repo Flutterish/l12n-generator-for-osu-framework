@@ -4,7 +4,7 @@ public struct Symbol {
 	public char Char;
 	public AnsiColor Fg;
 	public AnsiColor Bg;
-	public Attribute Attributes;
+	public Attrib Attributes;
 
 	public static bool RequiresAnsiChange ( in Symbol a, in Symbol b ) {
 		return a.Fg != b.Fg || a.Bg != b.Bg || a.Attributes != b.Attributes;
