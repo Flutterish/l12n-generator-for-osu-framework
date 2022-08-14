@@ -44,7 +44,7 @@ public class Summary {
 			if ( split.Length > 1 ) {
 				foreach ( var nested in split[..^1] ) {
 					if ( !ns.Nested.TryGetValue( nested, out var next ) )
-						ns.Nested.Add( nested, next = new( ns.Name + '.' + nested ) );
+						ns.Nested.Add( nested, next = new( ns.Name + '.' + nested, ns ) );
 
 					ns = next;
 				}
@@ -84,11 +84,15 @@ public class LocaleSummary {
 }
 
 public class LocaleNamespace {
+	public LocaleNamespace? Parent;
 	public string Name;
-	public LocaleNamespace ( string name ) {
+	public bool ScheduledForRemoval;
+	public LocaleNamespace ( string name, LocaleNamespace? parent = null ) {
 		Name = name;
+		Parent = parent;
 	}
 
 	public Dictionary<string, string> Keys = new();
+	public HashSet<string> KeysToBeRemoved = new();
 	public Dictionary<string, LocaleNamespace> Nested = new();
 }

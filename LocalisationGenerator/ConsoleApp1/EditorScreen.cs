@@ -1,75 +1,39 @@
 ﻿using LocalisationGenerator.Curses;
 using LocalisationGenerator.Tabs;
-using LocalisationGenerator.UI;
 
 namespace LocalisationGenerator;
 
 public class EditorScreen : ConsoleWindow {
-	LocalisationTab left;
-	KeyTreeTab right;
-	Program program;
 	Window focused;
-	TextBox textBox = new() { Placeholder = "Text goes here..." };
-	Dropdown<string> dropdown = new() { Options = new() {
-		$"{Underscore(Blue("E"))}dit",
-		$"Change {Underscore(Blue("G"))}uide",
-		$"Edit {Underscore(Blue("C"))}ontext",
-		$"{Underscore(Red("F"))}inish"
-	} };
-	public EditorScreen ( Program program ) {
-		this.program = program;
+	Locale currentLocale;
+	LocalisationTab localisation;
+	KeyTreeTab tree;
+	Project project;
 
-		left = new();
-		right = new( new( "" ) {
-			Nested = new() {
-				["Mod"] = new( "Mod" ) {
-					Keys = new() {
-						["ModA"] = "Mod.ModA",
-						["ModB"] = "Mod.ModB"
-					}
-				},
-				["Setting"] = new( "Setting" ) {
-					Keys = new() {
-						["NoteSize"] = "Setting.NoteSize",
-						["PlayfieldOpacity"] = "Setting.PlayfieldOpacity"
-					}
-				},
-				["Tooltips"] = new( "Tooltips" ) {
-					Nested = new() {
-						["Extra"] = new( "Tooltips.Extra" ) {
-							Keys = new() {
-								["Magic"] = "Tooltips.Extra.Magic"
-							}
-						}
-					}
-				},
-				["CollasedCategory"] = new( "CollasedCategory" ) {
+	public EditorScreen ( Project project, Locale locale ) {
+		this.project = project;
+		currentLocale = locale;
 
-				},
-				["ExpandedCategory"] = new( "ExpandedCategory" ) {
-					Keys = new() {
-						["Empty"] = "ExpandedCategory.Empty"
-					}
-				}
-			}
-		} );
-		AttachWindow( left );
-		AttachWindow( right );
+		localisation = new( project );
 
-		focused = left;
+		tree = new( project.GetLocaleNamespace( locale ), project );
+		AttachWindow( localisation );
+		AttachWindow( tree );
+
+		focused = tree;
 	}
 
 	protected override void Draw () {
-		left.Clear();
-		right.Clear();
+		localisation.Clear();
+		tree.Clear();
 
-		var width = (int)( Width * (focused == left ? 0.7 : 0.3) );
-		left.Resize( width, Height );
-		right.Resize( Width - width, Height );
-		right.X = width;
+		var width = (int)( Width * (focused == localisation ? 0.7 : 0.3) );
+		localisation.Resize( width, Height );
+		tree.Resize( Width - width, Height );
+		tree.X = width;
 
-		left.DrawBorder();
-		right.DrawBorder();
+		localisation.DrawBorder();
+		tree.DrawBorder();
 
 		void label ( Window w, string text ) {
 			w.CursorY = 0;
@@ -80,25 +44,19 @@ public class EditorScreen : ConsoleWindow {
 				w.Write( text, fg: ConsoleColor.Yellow );
 		}
 
-		label( left, "  F1  " );
-		label( right, "  F2  " );
+		label( localisation, "  F1  " );
+		label( tree, "  F2  " );
 
-		right.PushScissors( right.LocalRect with { X = 1, Y = 1, Width = right.Width - 2, Height = right.Height - 2 } );
-		left.PushScissors( left.LocalRect with { X = 1, Y = 1, Width = left.Width - 2, Height = left.Height - 2 } );
-		right.SetCursor( 0, 0 );
-		left.SetCursor( 0, 0 );
+		tree.PushScissors( tree.LocalRect with { X = 1, Y = 1, Width = tree.Width - 2, Height = tree.Height - 2 } );
+		localisation.PushScissors( localisation.LocalRect with { X = 1, Y = 1, Width = localisation.Width - 2, Height = localisation.Height - 2 } );
+		tree.SetCursor( 0, 0 );
+		localisation.SetCursor( 0, 0 );
 
-		left.Draw();
-		right.Draw();
+		localisation.Draw();
+		tree.Draw();
 
-		//textBox.Draw( left, wrap: true );
-		//var (from, to) = textBox.CaretPosition;
-		//(CursorX, CursorY) = (to.x + 1, to.y);
-
-		dropdown.Draw( left );
-
-		left.PopScissors();
-		right.PopScissors();
+		localisation.PopScissors();
+		tree.PopScissors();
 	}
 
 	public void Run () {
@@ -111,15 +69,27 @@ public class EditorScreen : ConsoleWindow {
 			var key = ReadKey();
 
 			if ( key.Key == ConsoleKey.F1 ) {
-				focused = left;
+				focused = localisation;
 			}
 			else if ( key.Key == ConsoleKey.F2 ) {
-				focused = right;
+				focused = tree;
 			}
 			else {
-				right.Selector.Handle( key );
-				//dropdown.Handle( key );
-				//textBox.Handle( key );
+				if ( tree.Selector.Handle( key ) )
+					continue;
+
+				if ( key.Key == ConsoleKey.R ) {
+					var (_, ns, k) = tree.Selector.Options[tree.Selector.SelectedIndex];
+					if ( k != null ) {
+						project.ToggleKeyRemoval( currentLocale, ns.Value.Keys[k] );
+					}
+					else if ( ns.Parent != null ) {
+						project.ToggleNamespaceRemoval( currentLocale, ns.Value );
+					}
+				}
+				else if ( key.Key == ConsoleKey.N ) {
+
+				}
 			}
 		}
 	}

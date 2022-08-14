@@ -294,6 +294,10 @@ public class Window {
 		Write( str + '\n', performLayout, fg, bg, attr, wrap, cb );
 	}
 
+	public int WidthOf ( string str ) {
+		return str.Length - TextLayout.EscapeRegex.Matches( str ).Count * 2;
+	}
+
 	public void DrawBorder ( char top = '─', char bottom = '─', char left = '│', char right = '│', 
 		char topLeft = '┌', char topRight = '┐', char bottomLeft = '└', char bottomRight = '┘' ) 
 	{
@@ -332,6 +336,8 @@ public class Window {
 		=> $"{esc( 'B' )}{str}{esc( ':' )}";
 	public static string Black ( string str )
 		=> $"{esc( 'Z' )}{str}{esc( ':' )}";
+	public static string Gray ( string str )
+		=> $"{esc( 'N' )}{str}{esc( ':' )}";
 
 	public static string RedBg ( string str )
 		=> $"{esc( 'r' )}{str}{esc( ';' )}";

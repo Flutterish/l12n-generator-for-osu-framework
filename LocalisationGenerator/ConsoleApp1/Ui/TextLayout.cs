@@ -11,6 +11,7 @@ public class TextLayout {
 	public static readonly Regex WordRegex = new( @$"(?:/)|(?:[\S-{RtlSyntaxns}]|\u0001.)+|(?:{RtlSyntaxns}|\u0001.)+", RegexOptions.Compiled );
 	public static readonly Regex RtlRegex = new( @$"^(?:{RtlSyntax}|\u0001.)+$", RegexOptions.Compiled );
 	public static readonly Regex IsEscapes = new( @"^(?:\u0001.)+$", RegexOptions.Compiled );
+	public static readonly Regex EscapeRegex = new( @"\u0001.", RegexOptions.Compiled );
 	public TextLayout ( string str, Rect rect, int x, int y, bool wrap = true ) {
 		bool justWrapped = false;
 

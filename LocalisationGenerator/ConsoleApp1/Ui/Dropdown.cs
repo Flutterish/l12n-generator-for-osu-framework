@@ -53,11 +53,28 @@ public class Dropdown<T> {
 		}
 	}
 
+	protected virtual bool TryHandle ( ConsoleKeyInfo key ) {
+		return false;
+	}
+
 	public bool Handle ( ConsoleKeyInfo key ) {
-		if ( Options.Count != 0 )
-			SelectedIndex = Math.Clamp( SelectedIndex, 0, Options.Count - 1 );
+		if ( Options.Count == 0 )
+			return false;
+			
+		SelectedIndex = Math.Clamp( SelectedIndex, 0, Options.Count - 1 );
+
+		if ( TryHandle( key ) )
+			return true;
 
 		switch ( key ) {
+			case { Key: ConsoleKey.UpArrow, Modifiers: ConsoleModifiers.Control }:
+				SelectedIndex = 0;
+				return true;
+
+			case { Key: ConsoleKey.DownArrow, Modifiers: ConsoleModifiers.Control }:
+				SelectedIndex = Options.Count - 1;
+				return true;
+
 			case { Key: ConsoleKey.UpArrow }:
 				if ( SelectedIndex != 0 )
 					SelectedIndex--;
@@ -67,8 +84,14 @@ public class Dropdown<T> {
 				if ( SelectedIndex != Options.Count - 1 )
 					SelectedIndex++;
 				return true;
+
+			case { Key: ConsoleKey.Enter or ConsoleKey.Spacebar or ConsoleKey.Tab }:
+				Selected?.Invoke( Options[SelectedIndex] );
+				return true;
 		}
 
 		return false;
 	}
+
+	public event Action<T>? Selected;
 }

@@ -51,8 +51,8 @@ public class ConsoleWindow : Window {
 	Symbol selectedAnsi = new Symbol { Fg = Console.ForegroundColor, Bg = Console.BackgroundColor, Attributes = Attrib.Normal };
 	public void Refresh () {
 		foreach ( var i in windows ) {
-			for ( int x = i.X; x < i.X + i.Width && x < Width; x++ ) {
-				for ( int y = i.Y; y < i.Y + i.Height && y < Height; y++ ) {
+			for ( int x = Math.Max( 0, i.X ); x < i.X + i.Width && x < Width; x++ ) {
+				for ( int y = Math.Max( 0, i.Y ); y < i.Y + i.Height && y < Height; y++ ) {
 					this[x, y] = i[x - i.X, y - i.Y];
 				}
 			}
@@ -132,6 +132,15 @@ public class ConsoleWindow : Window {
 	List<Window> windows = new();
 	public void AttachWindow ( Window window ) {
 		windows.Add( window );
+	}
+	public void DetachWindow ( Window window ) {
+		windows.Remove( window );
+	}
+
+	bool cursorVisible = true;
+	public bool CursorVisible {
+		get => cursorVisible;
+		set => Console.CursorVisible = cursorVisible = value;
 	}
 
 	public bool KeyAvailable => Console.KeyAvailable;
