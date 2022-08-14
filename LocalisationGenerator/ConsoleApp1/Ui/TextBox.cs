@@ -44,7 +44,7 @@ public class TextBox {
 			while ( lastLayout.Count <= text.Length )
 				lastLayout.Add( (0, 0, true) );
 
-			window.Write( $"{text[..selectionLeft]}{Window.RedBg(SelectedText)}{text[selectionRight..]}", performLayout: true, wrap: wrap, cb: (index, pos, symbol, truncated) => {
+			window.Write( $"{text[..selectionLeft]}{Window.RedBg(Window.Black(SelectedText))}{text[selectionRight..]}", performLayout: true, wrap: wrap, cb: (index, pos, symbol, truncated) => {
 				lastLayout[index + 1] = (pos.x, pos.y, truncated);
 				lastPrintedCount = index + 1;
 			} );
@@ -176,7 +176,7 @@ public class TextBox {
 		int count = -1;
 		int index = selectionEnd - 1;
 		while ( index > 0 ) {
-			if ( char.IsWhiteSpace( text[index] ) != char.IsWhiteSpace( text[index - 1] ) )
+			if ( char.IsLetterOrDigit( text[index] ) && !char.IsLetterOrDigit( text[index - 1] ) )
 				break;
 
 			count--;
@@ -193,7 +193,7 @@ public class TextBox {
 		int count = 1;
 		int index = selectionEnd + 1;
 		while ( index < text.Length ) {
-			if ( char.IsWhiteSpace( text[index] ) != char.IsWhiteSpace( text[index - 1] ) )
+			if ( !char.IsLetterOrDigit( text[index] ) && char.IsLetterOrDigit( text[index - 1] ) )
 				break;
 
 			count++;

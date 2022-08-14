@@ -173,6 +173,7 @@ public class Window {
 				'C' => ConsoleColor.Cyan,
 				'B' => ConsoleColor.Blue,
 				'N' => ConsoleColor.DarkGray,
+				'Z' => ConsoleColor.Black,
 				_ => AnsiColor.White
 			} );
 		}
@@ -329,6 +330,8 @@ public class Window {
 		=> $"{esc( 'C' )}{str}{esc( ':' )}";
 	public static string Blue ( string str )
 		=> $"{esc( 'B' )}{str}{esc( ':' )}";
+	public static string Black ( string str )
+		=> $"{esc( 'Z' )}{str}{esc( ':' )}";
 
 	public static string RedBg ( string str )
 		=> $"{esc( 'r' )}{str}{esc( ';' )}";

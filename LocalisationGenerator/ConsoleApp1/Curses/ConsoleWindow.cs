@@ -129,7 +129,6 @@ public class ConsoleWindow : Window {
 	}
 
 	public bool KeyAvailable => Console.KeyAvailable;
-
 	public ConsoleKeyInfo ReadKey () {
 		while ( !Console.KeyAvailable ) {
 			Thread.Sleep( 1 );
