@@ -240,7 +240,7 @@ public class Window {
 								else
 									cb?.Invoke( printableIndex++, (rect.X + CursorX, rect.Y + CursorY), empty with { Char = c } );
 
-								buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = c };
+								buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = rtl && c == ' ' ? '\u200F' : c };
 								CursorX++;
 							}
 						}
