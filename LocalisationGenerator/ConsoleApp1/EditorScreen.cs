@@ -10,10 +10,15 @@ public class EditorScreen : ConsoleWindow {
 	Program program;
 	Window focused;
 	TextBox textBox = new() { Placeholder = "Text goes here..." };
+	Dropdown<string> dropdown = new() { Options = new() {
+		$"{Blue("[E]")}dit",
+		$"Change {Blue("[G]")}uide",
+		$"Edit {Blue("[C]")}ontext",
+		$"{Red("[F]")}inish"
+	} };
 	public EditorScreen ( Program program ) {
 		this.program = program;
 
-		var width = (int)( Width * 0.75 );
 		left = new();
 		right = new( new( "" ) {
 			Nested = new() {
@@ -86,9 +91,11 @@ public class EditorScreen : ConsoleWindow {
 		left.Draw();
 		right.Draw();
 
-		textBox.Draw( left, wrap: true );
-		var (from, to) = textBox.CaretPosition;
-		(CursorX, CursorY) = (to.x + 1, to.y);
+		//textBox.Draw( left, wrap: true );
+		//var (from, to) = textBox.CaretPosition;
+		//(CursorX, CursorY) = (to.x + 1, to.y);
+
+		dropdown.Draw( left );
 
 		left.PopScissors();
 		right.PopScissors();
@@ -110,7 +117,9 @@ public class EditorScreen : ConsoleWindow {
 				focused = right;
 			}
 			else {
-				textBox.Handle( key );
+				right.Selector.Handle( key );
+				//dropdown.Handle( key );
+				//textBox.Handle( key );
 			}
 		}
 	}

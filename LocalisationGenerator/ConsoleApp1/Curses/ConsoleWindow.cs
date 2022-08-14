@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using ICSharpCode.Decompiler.Util;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace LocalisationGenerator.Curses;
@@ -21,19 +22,23 @@ public class ConsoleWindow : Window {
 		}
 	}
 
+	void clearPushed () {
+		var empty = new Symbol { Char = ' ', Fg = Console.ForegroundColor, Bg = Console.BackgroundColor, Attributes = Attribute.Normal };
+		for ( int x = 0; x < Width; x++ ) {
+			for ( int y = 0; y < Height; y++ ) {
+				pushed[x, y] = empty;
+			}
+		}
+	}
+
 	void checkForResize () {
 		if ( Console.WindowWidth != Width || Console.WindowHeight != Height ) {
-			var empty = new Symbol { Char = ' ', Fg = Console.ForegroundColor, Bg = Console.BackgroundColor, Attributes = Attribute.Normal };
 			var w = Console.WindowWidth;
 			var h = Console.WindowHeight;
-			pushed = new Symbol[w, h];
-			for ( int x = 0; x < w; x++ ) {
-				for ( int y = 0; y < h; y++ ) {
-					pushed[x, y] = empty;
-				}
-			}
-
 			Resize( w, h );
+			pushed = new Symbol[w, h];
+			clearPushed();
+
 			Draw();
 			Console.Clear();
 			Refresh();
@@ -114,11 +119,13 @@ public class ConsoleWindow : Window {
 			}
 		}
 
-		updater.Append( csi );
-		updater.Append( CursorY + 1 );
-		updater.Append( ';' );
-		updater.Append( CursorX + 1 );
-		updater.Append( 'H' );
+		if ( (CursorX, CursorY) != (0, 0) ) {
+			updater.Append( csi );
+			updater.Append( CursorY + 1 );
+			updater.Append( ';' );
+			updater.Append( CursorX + 1 );
+			updater.Append( 'H' );
+		}
 
 		Console.Write( updater.ToString() );
 	}

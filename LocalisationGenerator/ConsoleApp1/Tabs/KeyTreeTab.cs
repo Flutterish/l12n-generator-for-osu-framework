@@ -1,4 +1,5 @@
 ﻿using LocalisationGenerator.Curses;
+using LocalisationGenerator.Ui;
 
 namespace LocalisationGenerator.Tabs;
 
@@ -8,10 +9,13 @@ public class KeyTreeTab : Window {
 		tree = new( ns );
 	}
 
+	public Dropdown<(int i, string str)> Selector = new( i => i.str ) { LeftSelection = " > ", RightSelection = " < " };
+	List<(NamespaceTree tree, string? key)> options = new();
 	public void Draw () {
 		WriteLine( $"{Blue( "[<]" )}History{Blue( "[>]" )} {Red( "[R]" )}emove {Blue( "[A]" )}dd {Blue( "[L]" )}anguage (en)", performLayout: true );
-		PushScissors( DrawRect with { X = DrawRect.X + 3, Width = DrawRect.Width - 6 } );
 		CursorX = 0;
+		options.Clear();
+		Selector.Options.Clear();
 
 		void tree ( NamespaceTree ns, string indent = "" ) {
 			int c = 0;
@@ -21,7 +25,8 @@ public class KeyTreeTab : Window {
 			foreach ( var (shortKey, key) in ns.Value.Keys.OrderBy( x => x.Key ) ) {
 				c++;
 				//var str = summary!.Keys[key];
-				WriteLine( indent + ( isLast() ? "└─" : "├─" ) + Yellow( shortKey ) + ": " + $"{Red( "\"" )}{key}{Red( "\"" )}", wrap: false );
+				Selector.Options.Add(( options.Count, indent + ( isLast() ? "└─" : "├─" ) + Yellow( shortKey ) + ": " + $"{Red( "\"" )}{key}{Red( "\"" )}" ));
+				options.Add(( ns, shortKey ));
 				//var lang = str.LocalisedIn.FirstOrDefault( x => x == mainlocale ) ?? str.LocalisedIn.First();
 				//WriteLine( indent + ( isLast() ? "   " : "│ " ) + $"\tExample [{lang.ISO}]: {Red( "\"" )}{lang.Strings[key].ColoredValue}{Red( "\"" )}" );
 				//if ( str.NotLocalisedIn.Any() ) {
@@ -32,19 +37,22 @@ public class KeyTreeTab : Window {
 			}
 			foreach ( var (name, nested) in ns.Children.OrderBy( x => x.shortName ) ) {
 				c++;
-				WriteLine( indent + ( isLast() ? "└─" : "├─" ) + name, wrap: false );
+				Selector.Options.Add(( options.Count, indent + ( isLast() ? "└─" : "├─" ) + name ));
+				options.Add(( nested, null ));
 				tree( nested, indent + ( isLast() ? "  " : "│ " ) );
 			}
 		}
-		WriteLine( "." );
+		Selector.Options.Add(( options.Count, "." ));
+		options.Add(( this.tree, null ));
 		tree( this.tree );
 
-		PopScissors();
+		Selector.Draw( this );
 	}
 
 	class NamespaceTree {
 		public readonly LocaleNamespace Value;
 		public readonly NamespaceTree? Parent;
+		public bool IsExpanded = true;
 
 		public NamespaceTree ( LocaleNamespace value, NamespaceTree? parent = null ) {
 			Value = value;
