@@ -96,8 +96,10 @@ public class EditorScreen : ConsoleWindow {
 
 	public void Run () {
 		while ( true ) {
-			Draw();
-			Refresh();
+			if ( !KeyAvailable ) {
+				Draw();
+				Refresh();
+			}
 
 			var key = ReadKey();
 

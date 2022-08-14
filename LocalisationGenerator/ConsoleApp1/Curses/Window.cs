@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+﻿using LocalisationGenerator.Ui;
 
 namespace LocalisationGenerator.Curses;
 
@@ -121,19 +121,17 @@ public class Window {
 		}
 	}
 
-	public void Write ( Symbol s, LayoutCallback? cb = null, int printableIndex = 0 ) {
+	public void Write ( Symbol s ) {
 		var rect = DrawRect;
 
 		if ( s.Char == '\n' ) {
 			WriteLine();
-			cb?.Invoke( printableIndex, (rect.X + CursorX - 1, rect.Y + CursorY), s );
 		}
 		else {
 			if ( CursorX >= rect.Width ) {
 				WriteLine();
 			}
 
-			cb?.Invoke( printableIndex, (rect.X + CursorX, rect.Y + CursorY), s );
 			buffer[CursorX + rect.X, CursorY + rect.Y] = s;
 			CursorX++;
 		}
@@ -181,9 +179,8 @@ public class Window {
 	}
 
 	public delegate void LayoutCallback ( int printableIndex, (int x, int y) position, Symbol symbol, bool truncated = false );
-	static readonly Regex wordRegex = new( @"(?:[\S-[/]]|\u0001.)+", RegexOptions.Compiled );
-	public void Write ( string str, AnsiColor? fg = null, AnsiColor? bg = null, Attribute? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
-		int printableIndex = 0;
+	public void Write ( string str, bool performLayout = false, AnsiColor? fg = null, AnsiColor? bg = null, Attribute? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
+		int printableIndex = -1;
 
 		if ( fg is AnsiColor f )
 			PushForeground( f );
@@ -195,54 +192,94 @@ public class Window {
 		var empty = EmptySymbol;
 		var rect = DrawRect;
 
-		bool justWrapped = false;
+		if ( performLayout ) {
+			bool firstLine = true;
+			var layout = new TextLayout( str, rect, CursorX, CursorY, wrap );
+			foreach ( var line in layout.Lines ) {
+				if ( !firstLine ) {
+					WriteLine();
+				}
 
-		void writeString ( string str ) {
-			if ( str.Length == 0 )
-				return;
+				bool rightAlign = line.DirectionBlocks.Any() && line.DirectionBlocks.First().isRtl;
 
-			bool deleteSpace = ( ( justWrapped && CursorX == 0 ) || ( CursorX >= rect.Width ) ) && str[0] == ' ';
-			if ( deleteSpace )
-				cb?.Invoke( printableIndex++, (rect.X + CursorX, rect.Y + CursorY), empty with { Char = ' ' }, truncated: true );
+				if ( rightAlign ) {
+					CursorX = rect.Width - line.Width;
+				}
 
-			foreach ( char c in deleteSpace ? str[1..] : str ) {
-				if ( !wrap && c != '\n' && CursorX >= rect.Width ) {
-					cb?.Invoke( printableIndex++, (rect.X + CursorX, rect.Y + CursorY), empty with { Char = c }, truncated: true );
+				if ( printableIndex == -1 ) {
+					if ( rightAlign )
+						cb?.Invoke( printableIndex, (rect.Right - 1, rect.Y + CursorY), empty with { Char = '\0' } );
+					else
+						cb?.Invoke( printableIndex, (rect.X + CursorX - 1, rect.Y + CursorY), empty with { Char = '\0' } );
+					printableIndex++;
+				}
+
+				bool isEscaped = false;
+				int offset = 0;
+				for ( var i = 0; i < line.DirectionBlocks.Count; i++ ) {
+					var (count, rtl) = line.DirectionBlocks[i];
+
+					int rtlOffset = CursorX * 2 + line.Words.Skip(offset).Take(count).Sum( x => x.Width ) - 2;
+					foreach ( var (word, visible, whitespace) in line.Words.Skip(offset).Take(count) ) {
+						if ( visible ) {
+							foreach ( char c in word ) {
+								if ( isEscaped ) {
+									isEscaped = false;
+									applyEscape( c );
+									empty = EmptySymbol;
+									continue;
+								}
+								else if ( c == '\u0001' ) {
+									isEscaped = true;
+									continue;
+								}
+
+								if ( rtl )
+									cb?.Invoke( printableIndex++, (rect.X + rtlOffset - CursorX, rect.Y + CursorY), empty with { Char = c } );
+								else
+									cb?.Invoke( printableIndex++, (rect.X + CursorX, rect.Y + CursorY), empty with { Char = c } );
+
+								buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = c };
+								CursorX++;
+							}
+						}
+						else {
+							foreach ( char c in word ) {
+								if ( rtl )
+									cb?.Invoke( printableIndex++, (rect.X + rtlOffset - CursorX + 1, rect.Y + CursorY), empty with { Char = c }, truncated: true );
+								else
+									cb?.Invoke( printableIndex++, (rect.X + CursorX - 1, rect.Y + CursorY), empty with { Char = c }, truncated: true );
+							}
+						}
+					}
+
+					offset += count;
+				}
+
+				firstLine = false;
+			}
+		}
+		else {
+			bool escaped = false;
+			foreach ( var c in str ) {
+				if ( (CursorX >= rect.Width && wrap) || c == '\n' ) {
+					WriteLine();
 					continue;
 				}
 
-				Write( empty with { Char = c }, cb, printableIndex++ );
-			}
-		}
-
-		var whitespaces = wordRegex.Split( str );
-		var words = wordRegex.Matches( str );
-		for ( int i = 0; i < whitespaces.Length; i++ ) {
-			if ( i != 0 ) {
-				var word = words[i - 1].Value;
-				var parts = word.Split( escChar );
-				var length = word.Length - (parts.Length - 1) * 2;
-				if ( CursorX != 0 && CursorX + length > rect.Width && wrap ) {
-					CursorY = Math.Min( rect.Height - 1, CursorY + 1 );
-					CursorX = 0;
-					justWrapped = true;
+				if ( escaped ) {
+					applyEscape( c );
+					empty = EmptySymbol;
+					escaped = false;
 				}
-
-				for ( int j = 0; j < parts.Length; j++ ) {
-					if ( j > 0 ) {
-						applyEscape( parts[j][0] );
-						empty = EmptySymbol;
-
-						writeString( parts[j][1..] );
-					}
-					else {
-						writeString( parts[j] );
-					}
+				else if ( c == '\u0001' ) {
+					escaped = true;
+				}
+				else if ( wrap || CursorX < rect.Width ) {
+					buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = c };
+					CursorX++;
 				}
 			}
-
-			writeString( whitespaces[i] );
-			justWrapped = false;
 		}
 
 		if ( fg is AnsiColor )
@@ -252,8 +289,8 @@ public class Window {
 		if ( attr is Attribute )
 			PopAttribute();
 	}
-	public void WriteLine ( string str, AnsiColor? fg = null, AnsiColor? bg = null, Attribute? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
-		Write( str + '\n', fg, bg, attr, wrap, cb );
+	public void WriteLine ( string str, bool performLayout = false, AnsiColor? fg = null, AnsiColor? bg = null, Attribute? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
+		Write( str + '\n', performLayout, fg, bg, attr, wrap, cb );
 	}
 
 	public void DrawBorder ( char top = '─', char bottom = '─', char left = '│', char right = '│', 

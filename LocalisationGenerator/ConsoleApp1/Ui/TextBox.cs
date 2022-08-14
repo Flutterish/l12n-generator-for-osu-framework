@@ -44,7 +44,7 @@ public class TextBox {
 			while ( lastLayout.Count <= text.Length )
 				lastLayout.Add( (0, 0, true) );
 
-			window.Write( $"{text[..selectionLeft]}{Window.RedBg(SelectedText)}{text[selectionRight..]}", wrap: wrap, cb: (index, pos, symbol, truncated) => {
+			window.Write( $"{text[..selectionLeft]}{Window.RedBg(SelectedText)}{text[selectionRight..]}", performLayout: true, wrap: wrap, cb: (index, pos, symbol, truncated) => {
 				lastLayout[index + 1] = (pos.x, pos.y, truncated);
 				lastPrintedCount = index + 1;
 			} );
@@ -156,10 +156,17 @@ public class TextBox {
 			case { Key: ConsoleKey.Enter }:
 				insertString( "\n" );
 				return true;
+
+			case { Key: ConsoleKey.Tab }:
+				insertString( "    " );
+				return true;
 		}
 
-		InsertString( key.KeyChar.ToString() );
-		return true;
+		if ( !char.IsControl( key.KeyChar ) ) {
+			InsertString( key.KeyChar.ToString() );
+			return true;
+		}
+		return false;
 	}
 
 	protected int GetBackwardWordAmount () {

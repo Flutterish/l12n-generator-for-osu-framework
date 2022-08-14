@@ -128,6 +128,8 @@ public class ConsoleWindow : Window {
 		windows.Add( window );
 	}
 
+	public bool KeyAvailable => Console.KeyAvailable;
+
 	public ConsoleKeyInfo ReadKey () {
 		while ( !Console.KeyAvailable ) {
 			Thread.Sleep( 1 );

@@ -9,7 +9,7 @@ public class KeyTreeTab : Window {
 	}
 
 	public void Draw () {
-		WriteLine( $"{Blue( "[<]" )}History{Blue( "[>]" )} {Red( "[R]" )}emove {Blue( "[A]" )}dd {Blue( "[L]" )}anguage (en)" );
+		WriteLine( $"{Blue( "[<]" )}History{Blue( "[>]" )} {Red( "[R]" )}emove {Blue( "[A]" )}dd {Blue( "[L]" )}anguage (en)", performLayout: true );
 		PushScissors( DrawRect with { X = DrawRect.X + 3, Width = DrawRect.Width - 6 } );
 		CursorX = 0;
 
