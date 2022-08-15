@@ -39,7 +39,10 @@ public class ConsoleWindow : Window {
 			ClearPushed();
 
 			Draw();
-			Console.Clear();
+			try {
+				Console.Clear();
+			}
+			catch { }
 			Refresh();
 		}
 	}

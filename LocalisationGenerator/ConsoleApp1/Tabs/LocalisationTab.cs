@@ -107,14 +107,14 @@ public class LocalisationTab : Window {
 				WriteLine( $"Guide: {Red( "None" )}", performLayout: true );
 			}
 
-			Write( $"Value: {Red( "\"" )}", performLayout: true );
+			Write( $"Value: ", performLayout: true );
 			if ( Editing ) {
-				TextBox.Placeholder = $"Text goes here...{Red( "\"" )}";
-				TextBox.Draw( this, wrap: true, colorizedText: $"{key.ColoredValue}{Red( "\"" )}" );
+				TextBox.Placeholder = $"Text goes here...";
+				TextBox.Draw( this, wrap: true, colorizedText: $"{key.ColoredValue}" );
 				WriteLine();
 			}
 			else {
-				WriteLine( $"{key.ColoredValue}{Red( "\"" )}", performLayout: true );
+				WriteLine( $"{key.ColoredValue}", performLayout: true );
 			}
 
 			WriteLine();

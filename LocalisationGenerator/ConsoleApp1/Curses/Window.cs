@@ -136,7 +136,7 @@ public class Window {
 		else if ( s.Char == '\t' ) {
 			int count = (( CursorX + tabAlign ) / tabAlign) * tabAlign - CursorX;
 			for ( int i = 0; i < count && Width > CursorX + rect.X; i++ ) {
-				buffer[CursorX + rect.X, CursorY + rect.Y] = s with { Char = ' ' };
+				this[CursorX + rect.X, CursorY + rect.Y] = s with { Char = ' ' };
 				CursorX++;
 			}
 		}
@@ -145,7 +145,7 @@ public class Window {
 				WriteLine();
 			}
 
-			buffer[CursorX + rect.X, CursorY + rect.Y] = s;
+			this[CursorX + rect.X, CursorY + rect.Y] = s;
 			CursorX++;
 		}
 	}
@@ -212,7 +212,7 @@ public class Window {
 			foreach ( var line in layout.Lines ) {
 				if ( !firstLine ) {
 					if ( showFormatting && CursorX < rect.Width )
-						buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = '⏎', Fg = ConsoleColor.DarkGray };
+						this[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = '⏎', Fg = ConsoleColor.DarkGray };
 					WriteLine();
 				}
 
@@ -257,12 +257,12 @@ public class Window {
 
 								if ( c == ' ' ) {
 									if ( showFormatting )
-										buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = '·', Fg = ConsoleColor.DarkGray };
+										this[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = '·', Fg = ConsoleColor.DarkGray };
 									else
-										buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = rtl ? '\u200F' : ' ' };
+										this[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = rtl ? '\u200F' : ' ' };
 								}
 								else {
-									buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = c };
+									this[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = c };
 								}
 									
 								CursorX++;
@@ -301,7 +301,7 @@ public class Window {
 					escaped = true;
 				}
 				else if ( wrap || CursorX < rect.Width ) {
-					buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = c };
+					this[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = c };
 					CursorX++;
 				}
 			}
@@ -333,19 +333,19 @@ public class Window {
 		var empty = EmptySymbol;
 
 		for ( int x = 1; x < rect.Width - 1; x++ ) {
-			buffer[rect.X + x, rect.Y] = empty with { Char = top };
-			buffer[rect.X + x, rect.Bottom - 1] = empty with { Char = bottom };
+			this[rect.X + x, rect.Y] = empty with { Char = top };
+			this[rect.X + x, rect.Bottom - 1] = empty with { Char = bottom };
 		}
 
 		for ( int y = 1; y < rect.Height - 1; y++ ) {
-			buffer[rect.X, rect.Y + y] = empty with { Char = left };
-			buffer[rect.Right - 1, rect.Y + y] = empty with { Char = right };
+			this[rect.X, rect.Y + y] = empty with { Char = left };
+			this[rect.Right - 1, rect.Y + y] = empty with { Char = right };
 		}
 
-		buffer[rect.X, rect.Y] = empty with { Char = topLeft };
-		buffer[rect.Right - 1, rect.Y] = empty with { Char = topRight };
-		buffer[rect.X, rect.Bottom - 1] = empty with { Char = bottomLeft };
-		buffer[rect.Right - 1, rect.Bottom - 1] = empty with { Char = bottomRight };
+		this[rect.X, rect.Y] = empty with { Char = topLeft };
+		this[rect.Right - 1, rect.Y] = empty with { Char = topRight };
+		this[rect.X, rect.Bottom - 1] = empty with { Char = bottomLeft };
+		this[rect.Right - 1, rect.Bottom - 1] = empty with { Char = bottomRight };
 	}
 
 	public static char escChar = '\u0001';
