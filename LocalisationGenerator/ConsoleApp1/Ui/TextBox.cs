@@ -2,6 +2,7 @@
 // credit to the devs of https://github.com/ppy/osu-framework/blob/master/osu.Framework/Graphics/UserInterface/TextBox.cs
 
 using LocalisationGenerator.Curses;
+using System.Diagnostics;
 
 namespace LocalisationGenerator.UI;
 
@@ -20,6 +21,10 @@ public class TextBox {
 			text = string.Empty;
 
 			insertString( value );
+			history.Clear();
+			historyIndex = 0;
+			timer.Restart();
+			history.Add( (text, selectionStart, selectionEnd) );
 		}
 	}
 	public string SelectedText => selectionLength > 0 ? Text.Substring( selectionLeft, selectionLength ) : string.Empty;
@@ -59,6 +64,26 @@ public class TextBox {
 		}
 	}
 
+	Stopwatch timer = new();
+	int historyIndex;
+	List<(string text, int start, int end)> history = new() { ("", 0, 0) };
+
+	void beforeTextChanged () {
+		if ( timer.ElapsedMilliseconds > 500 && (history.Count == 0 || history[historyIndex].text != text) ) {
+			addToHistory();
+		}
+
+		timer.Restart();
+	}
+
+	void addToHistory () {
+		while ( history.Count > historyIndex + 1 )
+			history.RemoveAt( history.Count - 1 );
+
+		history.Add( (text, selectionStart, selectionEnd) );
+		historyIndex = history.Count - 1;
+	}
+
 	public bool Handle ( ConsoleKeyInfo key ) {
 		switch ( key ) {
 			// Clipboard
@@ -80,6 +105,24 @@ public class TextBox {
 			case { Modifiers: ConsoleModifiers.Control, Key: ConsoleKey.A }:
 				selectionStart = 0;
 				selectionEnd = text.Length;
+				return true;
+
+			// History
+			case { Modifiers: ConsoleModifiers.Control, Key: ConsoleKey.Y } or { Modifiers: ConsoleModifiers.Control | ConsoleModifiers.Shift, Key: ConsoleKey.Z }:
+				if ( history.Count != 0 ) {
+					historyIndex = Math.Clamp( historyIndex + 1, 0, history.Count - 1 );
+					(text, selectionStart, selectionEnd) = history[historyIndex];
+				}
+				return true;
+
+			case { Modifiers: ConsoleModifiers.Control, Key: ConsoleKey.Z }:
+				if ( history.Count != 0 ) {
+					if ( history[historyIndex].text != text )
+						addToHistory();
+
+					historyIndex = Math.Clamp( historyIndex - 1, 0, history.Count - 1 );
+					(text, selectionStart, selectionEnd) = history[historyIndex];
+				}
 				return true;
 
 			// Deletion
@@ -268,6 +311,7 @@ public class TextBox {
 	}
 
 	protected void DeleteBy ( int amount ) {
+		beforeTextChanged();
 		retainedCursorX = null;
 
 		if ( selectionLength == 0 )
@@ -328,12 +372,9 @@ public class TextBox {
 
 	private void insertString ( string value ) {
 		if ( string.IsNullOrEmpty( value ) ) return;
+		beforeTextChanged();
 
 		foreach ( char c in value ) {
-			//if ( char.IsControl( c ) ) {
-			//	continue;
-			//}
-
 			if ( selectionLength > 0 )
 				removeSelection();
 
