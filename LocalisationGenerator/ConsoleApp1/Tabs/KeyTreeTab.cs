@@ -271,6 +271,8 @@ public class KeyTreeTab : Window {
 		window.WriteLine( $"Press {Underscore( Blue( "A" ) )} to add a new string", performLayout: true );
 		window.WriteLine( $"Press {Underscore( Red( "R" ) )} to remove or re-add a string or a whole group", performLayout: true );
 		window.WriteLine( $"Press {Underscore( Blue( "L" ) )} to change the language you're working on", performLayout: true );
+		window.WriteLine();
+		window.WriteLine( $"Please note that not all terminals support all keys this program supports", performLayout: true );
 
 		window.PopScissors();
 	}

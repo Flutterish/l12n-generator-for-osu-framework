@@ -1,5 +1,6 @@
 ﻿using LocalisationGenerator.Curses;
 using LocalisationGenerator.UI;
+using System.Runtime.InteropServices;
 
 namespace LocalisationGenerator.Tabs;
 
@@ -227,6 +228,11 @@ public class LocalisationTab : Window {
 		window.WriteLine( $"Press {Underscore( Blue( "M" ) )} to edit the next missing string, if available", performLayout: true );
 		window.WriteLine( $"Press {Underscore( Blue( "V" ) )} to edit sample variables if there are any", performLayout: true );
 		window.WriteLine( $"Press {Underscore( Blue( "G" ) )} to change the guide string if there are other languages with this string", performLayout: true );
+		window.WriteLine();
+		window.WriteLine( $"Please note that not all terminals support all keys this program supports", performLayout: true );
+		window.WriteLine( $"Additionally, not all terminals support unicode and RTL languages", performLayout: true );
+		if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) )
+			window.WriteLine( $"If you experience any issues, please try running this in the {Underscore("Windows Terminal")}", performLayout: true );
 
 		window.PopScissors();
 	}
