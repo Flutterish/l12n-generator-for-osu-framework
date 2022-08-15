@@ -64,15 +64,18 @@ public class EditorScreen : ConsoleWindow {
 		tree.DrawBorder();
 
 		void label ( Window w, string text ) {
+			if ( w.Width >= 14 ) {
+				w.CursorY = 0;
+				w.CursorX = w.Width - 5;
+				w.Write( "[?]" );
+			}
+
 			w.CursorY = 0;
 			w.CursorX = 2;
 			if ( w == focused )
-				w.Write( text, fg: ConsoleColor.Black, bg: ConsoleColor.Yellow );
+				w.Write( text, fg: ConsoleColor.Black, bg: ConsoleColor.Yellow, wrap: false );
 			else
-				w.Write( text, fg: ConsoleColor.Yellow );
-
-			w.CursorX = w.Width - 5;
-			w.Write( "[?]" );
+				w.Write( text, fg: ConsoleColor.Yellow, wrap: false );
 		}
 
 		label( localisation, "  F1  " );
