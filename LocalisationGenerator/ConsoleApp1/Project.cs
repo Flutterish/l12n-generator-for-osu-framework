@@ -13,11 +13,11 @@ public class Project {
 	public Dictionary<string, Locale> Locales = new();
 	public Dictionary<string, HashSet<Locale>> LocalesContainingKey = new();
 
-	public LocalisableString GetBestGuide ( string key ) {
-		if ( Mainlocale.Strings.TryGetValue( key, out var str ) )
+	public LocalisableString GetBestGuide ( Locale locale, string key ) {
+		if ( locale != Mainlocale && Mainlocale.Strings.TryGetValue( key, out var str ) )
 			return str;
 
-		return LocalesContainingKey[key].First().Strings[ key ];
+		return LocalesContainingKey[key].FirstOrDefault( x => x != locale )?.Strings[ key ] ?? locale.Strings[key];
 	}
 
 	public LocaleNamespace GetLocaleNamespace ( Locale locale, string? key = null ) {
@@ -48,6 +48,7 @@ public class Project {
 		}
 		if ( !ns.Keys.ContainsKey( path[^1] ) )
 			ns.Keys.Add( path[^1], key );
+		ns.MissingKeys.Remove( path[^1] );
 	}
 
 	void removeKeyFromNamspace ( LocaleNamespace ns, string key ) {
@@ -115,6 +116,20 @@ public class Project {
 		Mainlocale = Locales[config.DefaultLocale];
 	}
 
+	public IEnumerable<string> GetMissingStrings ( Locale locale ) {
+		foreach ( var (key, list) in LocalesContainingKey ) {
+			if ( !list.Contains( locale ) )
+				yield return key;
+		}
+	}
+
+	public void UpdateMissing ( Locale locale ) {
+		foreach ( var i in GetMissingStrings( locale ) ) {
+			var tree = GetLocaleNamespace( locale, i );
+			tree.MissingKeys.Add( i.Split( '.' )[^1], i );
+		}
+	}
+
 	public void Save ( Locale? locale = null ) {
 		Directory.CreateDirectory( Config.L12NFilesLocation );
 		foreach ( var loc in locale != null ? (IEnumerable<Locale>)new[] { locale } : Locales.Values ) {
@@ -144,5 +159,12 @@ public class Project {
 
 	public void ToggleNamespaceRemoval ( Locale locale, LocaleNamespace ns, bool? set = null ) {
 		ns.ScheduledForRemoval = set is bool b ? b : !ns.ScheduledForRemoval;
+	}
+
+	public LocalisableString AddKey ( Locale locale, string key ) {
+		var str = new LocalisableString( key, locale.ISO );
+		locale.Strings.Add( key, str );
+		OnLocaleKeyAdded( locale, key );
+		return str;
 	}
 }

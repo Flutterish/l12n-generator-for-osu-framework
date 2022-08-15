@@ -93,6 +93,7 @@ public class LocaleNamespace {
 	}
 
 	public Dictionary<string, string> Keys = new();
+	public Dictionary<string, string> MissingKeys = new();
 	public HashSet<string> KeysToBeRemoved = new();
 	public Dictionary<string, LocaleNamespace> Nested = new();
 }

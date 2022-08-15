@@ -15,6 +15,9 @@ public class Dropdown<T> {
 	}
 
 	public void Draw ( Window window, int? heightLimit = null ) {
+		if ( Options.Count != 0 )
+			SelectedIndex = Math.Clamp( SelectedIndex, 0, Options.Count - 1 );
+
 		var x = window.CursorX;
 		var startY = window.CursorY;
 		var height = Math.Min( window.DrawRect.Height - startY, heightLimit ?? int.MaxValue );
@@ -67,25 +70,25 @@ public class Dropdown<T> {
 			return true;
 
 		switch ( key ) {
-			case { Key: ConsoleKey.UpArrow, Modifiers: ConsoleModifiers.Control }:
+			case { Key: ConsoleKey.UpArrow or ConsoleKey.NumPad8, Modifiers: ConsoleModifiers.Control } or { Key: ConsoleKey.LeftArrow or ConsoleKey.NumPad4 }:
 				SelectedIndex = 0;
 				return true;
 
-			case { Key: ConsoleKey.DownArrow, Modifiers: ConsoleModifiers.Control }:
+			case { Key: ConsoleKey.DownArrow or ConsoleKey.NumPad2, Modifiers: ConsoleModifiers.Control } or { Key: ConsoleKey.RightArrow or ConsoleKey.NumPad6 }:
 				SelectedIndex = Options.Count - 1;
 				return true;
 
-			case { Key: ConsoleKey.UpArrow }:
+			case { Key: ConsoleKey.UpArrow or ConsoleKey.NumPad8 }:
 				if ( SelectedIndex != 0 )
 					SelectedIndex--;
 				return true;
 
-			case { Key: ConsoleKey.DownArrow }:
+			case { Key: ConsoleKey.DownArrow or ConsoleKey.NumPad2 }:
 				if ( SelectedIndex != Options.Count - 1 )
 					SelectedIndex++;
 				return true;
 
-			case { Key: ConsoleKey.Enter or ConsoleKey.Spacebar or ConsoleKey.Tab }:
+			case var k when k.IsConfirmAction():
 				Selected?.Invoke( Options[SelectedIndex] );
 				return true;
 		}

@@ -6,8 +6,22 @@ namespace LocalisationGenerator.Tabs;
 public class LocalisationTab : Window {
 	Project project;
 	public TextBox TextBox = new();
-	public LocalisationTab ( Project project ) {
+	public Locale Locale;
+
+	LocalisableString? key;
+	public LocalisableString? String {
+		get => key;
+		set {
+			if ( key == value )
+				return;
+
+			key = value;
+		}
+	}
+
+	public LocalisationTab ( Project project, Locale locale ) {
 		this.project = project;
+		Locale = locale;
 	}
 
 	public void Draw () {

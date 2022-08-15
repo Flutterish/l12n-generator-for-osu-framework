@@ -14,13 +14,41 @@ public class EditorScreen : ConsoleWindow {
 		this.project = project;
 		currentLocale = locale;
 
-		localisation = new( project );
+		localisation = new( project, locale );
 
-		tree = new( project.GetLocaleNamespace( locale ), project );
+		tree = new( project.GetLocaleNamespace( locale ), project, locale );
 		AttachWindow( localisation );
 		AttachWindow( tree );
 
 		focused = tree;
+		tree.LocaleSelected += SetLocale;
+		tree.StringSelected += SetString;
+
+		SetLocale( locale );
+	}
+
+	public void SetLocale ( Locale newLocale ) {
+		currentLocale = newLocale;
+		localisation.Locale = newLocale;
+		tree.Locale = newLocale;
+		var rootNs = project.GetLocaleNamespace( newLocale );
+		tree.Tree = new( rootNs );
+
+		if ( localisation.String is LocalisableString str && newLocale.Strings.TryGetValue( str.Key, out var newString ) )
+			SetString( newString );
+		else
+			SetString( null );
+
+		project.UpdateMissing( newLocale );
+	}
+
+	public void SetString ( LocalisableString? str ) {
+		localisation.String = str;
+
+		if ( str != null )
+			focused = localisation;
+		else
+			focused = tree;
 	}
 
 	protected override void Draw () {
@@ -42,6 +70,9 @@ public class EditorScreen : ConsoleWindow {
 				w.Write( text, fg: ConsoleColor.Black, bg: ConsoleColor.Yellow );
 			else
 				w.Write( text, fg: ConsoleColor.Yellow );
+
+			w.CursorX = w.Width - 5;
+			w.Write( "[?]" );
 		}
 
 		label( localisation, "  F1  " );
@@ -57,6 +88,15 @@ public class EditorScreen : ConsoleWindow {
 
 		localisation.PopScissors();
 		tree.PopScissors();
+
+		if ( tree.TextBox != null ) {
+			CursorVisible = true;
+			var (_, (x, y)) = tree.TextBox.CaretPosition;
+			SetCursor( tree.X + x + 1, tree.Y + y );
+		}
+		else {
+			CursorVisible = false;
+		}
 	}
 
 	public void Run () {
@@ -75,20 +115,11 @@ public class EditorScreen : ConsoleWindow {
 				focused = tree;
 			}
 			else {
-				if ( tree.Selector.Handle( key ) )
-					continue;
-
-				if ( key.Key == ConsoleKey.R ) {
-					var (_, ns, k) = tree.Selector.Options[tree.Selector.SelectedIndex];
-					if ( k != null ) {
-						project.ToggleKeyRemoval( currentLocale, ns.Value.Keys[k] );
-					}
-					else if ( ns.Parent != null ) {
-						project.ToggleNamespaceRemoval( currentLocale, ns.Value );
-					}
+				if ( key.Key is >= ConsoleKey.NumPad0 and <= ConsoleKey.NumPad9 ) {
+					tree.Handle( key );
 				}
-				else if ( key.Key == ConsoleKey.N ) {
-
+				else {
+					tree.Handle( key );
 				}
 			}
 		}

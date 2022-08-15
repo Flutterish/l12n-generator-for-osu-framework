@@ -31,6 +31,10 @@ public class Program {
 
 	string startingPath = Directory.GetCurrentDirectory();
 	void Run () {
+		AppDomain.CurrentDomain.ProcessExit += (_, _) => {
+			project?.Save();
+		};
+
 		fgColorStack.Push( ConsoleColor.Gray );
 		bgColorStack.Push( ConsoleColor.Black );
 
@@ -287,6 +291,7 @@ public class Program {
 		EditorScreen screen = new( project, locale );
 
 		screen.Run();
+		Console.CursorVisible = true;
 
 		return;
 
@@ -913,7 +918,7 @@ public class Program {
 				else if ( key.Key == ConsoleKey.DownArrow ) {
 					selectIndex = Math.Min( allowCancel ? ( options.Count ) : ( options.Count - 1 ), selectIndex + 1 );
 				}
-				else if ( key.Key == ConsoleKey.Enter ) {
+				else if ( key.IsConfirmAction() ) {
 					if ( selectIndex == options.Count )
 						return default;
 					else

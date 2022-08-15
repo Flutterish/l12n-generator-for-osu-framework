@@ -7,7 +7,7 @@ public class NamespaceDropdown : Dropdown<(string str, NamespaceTree ns, string?
 	}
 
 	protected override bool TryHandle ( ConsoleKeyInfo key ) {
-		if ( key is { Key: ConsoleKey.UpArrow, Modifiers: ConsoleModifiers.Control } ) {
+		if ( key is { Key: ConsoleKey.UpArrow or ConsoleKey.NumPad8, Modifiers: ConsoleModifiers.Control } or { Key: ConsoleKey.LeftArrow or ConsoleKey.NumPad4 } ) {
 			if ( SelectedIndex != 0 )
 				SelectedIndex--;
 
@@ -16,7 +16,7 @@ public class NamespaceDropdown : Dropdown<(string str, NamespaceTree ns, string?
 
 			return true;
 		}
-		else if ( key is { Key: ConsoleKey.DownArrow, Modifiers: ConsoleModifiers.Control } ) {
+		else if ( key is { Key: ConsoleKey.DownArrow or ConsoleKey.NumPad2, Modifiers: ConsoleModifiers.Control } or { Key: ConsoleKey.RightArrow or ConsoleKey.NumPad6 } ) {
 			if ( SelectedIndex != Options.Count - 1 )
 				SelectedIndex++;
 

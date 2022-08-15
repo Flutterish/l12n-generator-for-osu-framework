@@ -6,6 +6,8 @@ using LocalisationGenerator.Curses;
 namespace LocalisationGenerator.UI;
 
 public class TextBox {
+	public bool AllowMultiline = false;
+
 	public string Placeholder = string.Empty;
 
 	private int lastPrintedCount;
@@ -152,7 +154,8 @@ public class TextBox {
 				return true;
 
 			case { Key: ConsoleKey.Enter }:
-				insertString( "\n" );
+				if ( AllowMultiline ) 
+					insertString( "\n" );
 				return true;
 
 			case { Key: ConsoleKey.Tab }:
