@@ -55,7 +55,12 @@ public class Window {
 	Symbol[,] buffer;
 	public Symbol this[int x, int y] {
 		get => buffer[x, y];
-		set => buffer[x, y] = value;
+		set {
+			if ( x < 0 || y < 0 || x >= Width || y >= Height )
+				return;
+
+			buffer[x, y] = value;
+		}
 	}
 
 	public Window () : this( 0, 0 ) { }
