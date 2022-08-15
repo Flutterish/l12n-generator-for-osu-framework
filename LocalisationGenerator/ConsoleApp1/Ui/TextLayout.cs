@@ -149,6 +149,10 @@ public class TextLayout {
 			justWrapped = false;
 		}
 
+		if ( currentWord != "" ) {
+			lineWords.Add( new( currentWord, isWordVisible, isWordWhitespace ) );
+			currentWord = "";
+		}
 		newLine( false );
 	}
 }

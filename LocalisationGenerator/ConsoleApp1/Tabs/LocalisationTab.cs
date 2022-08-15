@@ -7,12 +7,20 @@ public class LocalisationTab : Window {
 	Project project;
 	public TextBox TextBox = new();
 	public bool Editing = false;
+	public bool IsFocused;
 
 	static string edit = $"{Underscore(Blue("E"))}dit";
 	static string editArgs = $"Edit {Underscore( Blue( "V" ) )}ariables";
 	static string changeGuide = $"Change {Underscore( Blue( "G" ) )}uide";
 	static string addMissing = $"Add next {Underscore( Blue( "M" ) )}issing string";
 	Dropdown<string> dropdown = new();
+
+	bool selectingGuide;
+	Dropdown<Locale> guideDropdown = new( i => $"{i.Name} ({i.ISO})" );
+
+	bool selectingVariable;
+	Dropdown<string> variableDropdown;
+	public TextBox? VariableTextbox;
 
 	Locale guideLocale => project.Locales[guide!.Locale];
 	LocalisableString? guide;
@@ -48,20 +56,34 @@ public class LocalisationTab : Window {
 		Locale = locale;
 
 		dropdown.Selected += op => onDropdownSelected( op );
+		guideDropdown.Selected += newGuide => {
+			guide = newGuide.Strings[key!.Key];
+			selectingGuide = false;
+		};
+
+		variableDropdown = new( i => $"{i}: {Green(sampleArgs[i])}" );
+		variableDropdown.Selected += onVariableSelected;
+	}
+
+	void onVariableSelected ( string arg ) {
+		selectingVariable = false;
+		VariableTextbox = new() {
+			Placeholder = "sample text",
+		};
+		VariableTextbox.InsertString( sampleArgs[arg] );
 	}
 
 	void updateDropdown () {
 		dropdown.Options.Clear();
 
-		if ( key == null )
-			return;
+		if ( key != null )
+			dropdown.Options.Add( edit );
 
-		dropdown.Options.Add( edit );
 		if ( project.GetMissingStrings( Locale ).Any() )
 			dropdown.Options.Add( addMissing );
-		if ( key.Args.Any() )
+		if ( key?.Args.Any() == true )
 			dropdown.Options.Add( editArgs );
-		if ( project.LocalesContainingKey[key.Key].Count > 2 )
+		if ( key != null && project.LocalesContainingKey[key.Key].Count > 2 )
 			dropdown.Options.Add( changeGuide );
 	}
 
@@ -71,34 +93,44 @@ public class LocalisationTab : Window {
 
 		if ( key == null ) {
 			WriteLine( "No key selected...", performLayout: true );
-			return;
-		}
-		WriteLine( $"Key: {Yellow( key.Key )}\n", performLayout: true );
-		if ( guide != null ) {
-			Write( $"Guide ({guideLocale.ISO}): {Red("\"")}", performLayout: true );
-			WriteLine( $"{guide.ColoredValue}{Red( "\"" )}", performLayout: true );
+			selectingGuide = false;
+			selectingVariable = false;
 		}
 		else {
-			WriteLine( $"Guide: {Red( "None" )}", performLayout: true );
-		}
+			WriteLine( $"Key: {Yellow( key.Key )}\n", performLayout: true );
+			if ( guide != null ) {
+				Write( $"Guide ({guideLocale.ISO}): {Red( "\"" )}", performLayout: true );
+				WriteLine( $"{guide.ColoredValue}{Red( "\"" )}", performLayout: true );
+			}
+			else {
+				WriteLine( $"Guide: {Red( "None" )}", performLayout: true );
+			}
 
-		Write( $"Value: {Red( "\"" )}", performLayout: true );
-		if ( Editing ) {
-			TextBox.Placeholder = $"Text goes here...{Red("\"")}";
-			TextBox.Draw( this, wrap: true, colorizedText: $"{key.ColoredValue}{Red( "\"" )}" );
+			Write( $"Value: {Red( "\"" )}", performLayout: true );
+			if ( Editing ) {
+				TextBox.Placeholder = $"Text goes here...{Red( "\"" )}";
+				TextBox.Draw( this, wrap: true, colorizedText: $"{key.ColoredValue}{Red( "\"" )}" );
+				WriteLine();
+			}
+			else {
+				WriteLine( $"{key.ColoredValue}{Red( "\"" )}", performLayout: true );
+			}
+
 			WriteLine();
+
+			drawResult( key );
+		}
+
+		WriteLine();
+
+		if ( selectingVariable || VariableTextbox != null ) { }
+		else if ( selectingGuide ) {
+			WriteLine( "Select guide:" );
+			guideDropdown.Draw( this );
 		}
 		else {
-			WriteLine( $"{key.ColoredValue}{Red( "\"" )}", performLayout: true );
+			dropdown.Draw( this, !Editing && IsFocused );
 		}
-
-		WriteLine();
-
-		drawResult( key );
-
-		WriteLine();
-
-		dropdown.Draw( this, !Editing );
 	}
 
 	Dictionary<string, int> indices = new();
@@ -124,8 +156,19 @@ public class LocalisationTab : Window {
 			else
 				argList[index++] = arg;
 
-			WriteLine( $"{i}: {Green( arg )}" );
+			if ( !selectingVariable ) {
+				if ( VariableTextbox != null && i == variableDropdown.Options[variableDropdown.SelectedIndex] ) {
+					Write( $"{i}: ", wrap: false );
+					VariableTextbox.Draw( this, wrap: false, colorizedText: Green(VariableTextbox.Text) );
+					WriteLine();
+				}
+				else {
+					WriteLine( $"{i}: {Green( arg )}", wrap: false );
+				}
+			}
 		}
+		if ( selectingVariable )
+			variableDropdown.Draw( this );
 
 		WriteLine( "\nResult:", performLayout: true );
 		try {
@@ -205,7 +248,34 @@ public class LocalisationTab : Window {
 			return r;
 		}
 		else {
-			if ( key.Key == ConsoleKey.E ) {
+			if ( VariableTextbox != null ) {
+				if ( key.Key is ConsoleKey.Escape or ConsoleKey.Enter or ConsoleKey.Tab ) {
+					VariableTextbox = null;
+					return true;
+				}
+				else {
+					var r = VariableTextbox.Handle( key );
+					sampleArgs[variableDropdown.Options[variableDropdown.SelectedIndex]] = VariableTextbox.Text;
+					return r;
+				}
+			}
+			else if ( selectingVariable ) {
+				if ( key.Key == ConsoleKey.Escape ) {
+					selectingVariable = false;
+					return true;
+				}
+				else
+					return variableDropdown.Handle( key );
+			}
+			else if ( selectingGuide ) {
+				if ( key.Key == ConsoleKey.Escape ) {
+					selectingGuide = false;
+					return true;
+				}
+				else
+					return guideDropdown.Handle( key );
+			}
+			else if ( key.Key == ConsoleKey.E ) {
 				return onDropdownSelected( edit );
 			}
 			else if ( key.Key == ConsoleKey.V ) {
@@ -217,11 +287,9 @@ public class LocalisationTab : Window {
 			else if ( key.Key == ConsoleKey.M ) {
 				return onDropdownSelected( addMissing );
 			}
-			else if ( dropdown.Handle( key ) )
-				return true;
+			else
+				return dropdown.Handle( key );
 		}
-
-		return false;
 	}
 
 	bool onDropdownSelected ( string option ) {
@@ -233,17 +301,28 @@ public class LocalisationTab : Window {
 			FocusRequested?.Invoke();
 		}
 		else if ( option == editArgs ) {
+			selectingVariable = true;
+			variableDropdown.Options.Clear();
+			variableDropdown.Options.AddRange( key!.Args );
 
+			if ( variableDropdown.Options.Count == 1 ) {
+				variableDropdown.SelectedIndex = 0;
+				onVariableSelected( variableDropdown.Options[0] );
+			}
 		}
 		else if ( option == changeGuide ) {
-
+			selectingGuide = true;
+			guideDropdown.Options.Clear();
+			guideDropdown.Options.AddRange( project.LocalesContainingKey[ key!.Key ] );
+			guideDropdown.Options.Remove( Locale );
 		}
 		else if ( option == addMissing ) {
-
+			AddMissingRequested?.Invoke();
 		}
 
 		return true;
 	}
 
 	public event Action? FocusRequested;
+	public event Action? AddMissingRequested;
 }

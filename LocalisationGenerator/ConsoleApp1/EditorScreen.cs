@@ -26,6 +26,12 @@ public class EditorScreen : ConsoleWindow {
 		tree.StringSelected += SetString;
 
 		localisation.FocusRequested += () => focused = localisation;
+		localisation.AddMissingRequested += () => {
+			if ( tree.NextMissing != null )
+				SetString( project.AddKey( currentLocale, tree.NextMissing ) );
+			else
+				SetString( project.AddKey( currentLocale, project.GetMissingStrings( currentLocale ).First() ) );
+		};
 
 		SetLocale( locale );
 	}
@@ -121,6 +127,11 @@ public class EditorScreen : ConsoleWindow {
 			var (_, (x, y)) = localisation.TextBox.CaretPosition;
 			SetCursor( localisation.X + x + 1, localisation.Y + y );
 		}
+		else if ( localisation.VariableTextbox != null ) {
+			CursorVisible = true;
+			var (_, (x, y)) = localisation.VariableTextbox.CaretPosition;
+			SetCursor( localisation.X + x + 1, localisation.Y + y );
+		}
 		else {
 			CursorVisible = false;
 		}
@@ -142,6 +153,7 @@ public class EditorScreen : ConsoleWindow {
 	public void Run () {
 		while ( true ) {
 			if ( !KeyAvailable ) {
+				localisation.IsFocused = focused == localisation;
 				Draw();
 				Refresh();
 			}
@@ -172,7 +184,10 @@ public class EditorScreen : ConsoleWindow {
 				}
 				else if ( focused == tree ? localisation.Handle( key ) : tree.Handle( key ) ) { }
 				else if ( key.Key == ConsoleKey.Escape ) {
-					break;
+					if ( focused == tree )
+						break;
+					else
+						focused = tree;
 				}
 			}
 		}

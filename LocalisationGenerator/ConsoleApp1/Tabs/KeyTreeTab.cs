@@ -9,9 +9,17 @@ public class KeyTreeTab : Window {
 	public Locale Locale;
 	public TextBox? TextBox;
 
+	public string? NextMissing;
+
 	string? keyToSelect;
 	public void SelectKey ( string key ) {
 		keyToSelect = key;
+		var path = key.Split( '.' );
+		var ns = Tree;
+		foreach ( var i in path[..^1] ) {
+			ns = ns.Children.First( x => x.shortName == i ).child;
+			ns.IsExpanded = true;
+		}
 	}
 
 	public KeyTreeTab ( LocaleNamespace ns, Project project, Locale locale ) {
@@ -73,6 +81,7 @@ public class KeyTreeTab : Window {
 		Selector.Options.Clear();
 
 		int index = 0;
+		NextMissing = null;
 		void tree ( NamespaceTree ns, string indent = "" ) {
 			int c = 0;
 			bool isLast () {
@@ -86,6 +95,7 @@ public class KeyTreeTab : Window {
 					Selector.SelectedIndex = index;
 
 				if ( ns.Value.MissingKeys.ContainsKey( shortKey ) ) {
+					NextMissing ??= key;
 					Selector.Options.Add( (indent + ( isLast() ? "└─" : "├─" ) + Red( shortKey + " [Missing]" ), ns, shortKey) );
 				}
 				else if ( ns.Value.KeysToBeRemoved.Contains( shortKey ) ) {
