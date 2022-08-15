@@ -8,6 +8,12 @@ public class KeyTreeTab : Window {
 	Project project;
 	public Locale Locale;
 	public TextBox? TextBox;
+
+	string? keyToSelect;
+	public void SelectKey ( string key ) {
+		keyToSelect = key;
+	}
+
 	public KeyTreeTab ( LocaleNamespace ns, Project project, Locale locale ) {
 		Tree = new( ns );
 		this.project = project;
@@ -66,6 +72,7 @@ public class KeyTreeTab : Window {
 		CursorX = 0;
 		Selector.Options.Clear();
 
+		int index = 0;
 		void tree ( NamespaceTree ns, string indent = "" ) {
 			int c = 0;
 			bool isLast () {
@@ -73,6 +80,11 @@ public class KeyTreeTab : Window {
 			}
 			foreach ( var (shortKey, key) in ns.Value.Keys.Concat( ns.Value.MissingKeys ).OrderBy( x => x.Key ) ) {
 				c++;
+				index++;
+
+				if ( key == keyToSelect )
+					Selector.SelectedIndex = index;
+
 				if ( ns.Value.MissingKeys.ContainsKey( shortKey ) ) {
 					Selector.Options.Add( (indent + ( isLast() ? "└─" : "├─" ) + Red( shortKey + " [Missing]" ), ns, shortKey) );
 				}
@@ -87,6 +99,7 @@ public class KeyTreeTab : Window {
 			}
 			foreach ( var (name, nested) in ns.Children.OrderBy( x => x.shortName ) ) {
 				c++;
+				index++;
 				Selector.Options.Add(( indent + ( isLast() ? "└─" : "├─" ) + nested switch {
 					{ Value.ScheduledForRemoval: true } => Red( name ),
 					{ IsExpanded: true } => name,
@@ -140,6 +153,7 @@ public class KeyTreeTab : Window {
 
 			Selector.Options.Add( (".", Tree, null) );
 			tree( Tree );
+			keyToSelect = null;
 			Selector.Draw( this );
 		}
 	}
@@ -224,6 +238,31 @@ public class KeyTreeTab : Window {
 		}
 
 		return false;
+	}
+
+	public void DrawHelp ( Window window ) {
+		window.Clear();
+		window.DrawBorder();
+		window.CursorX = 2;
+		window.CursorY = 0;
+		window.Write( "Help [Tree Tab]", wrap: false );
+		window.PushScissors( window.DrawRect with { X = 1, Y = 1, Width = window.Width - 2, Height = window.Height - 2 } );
+
+		window.SetCursor( 0, 0 );
+		window.WriteLine( $"You can see all strings of the project in this tab", performLayout: true );
+		window.WriteLine();
+		window.WriteLine( $"Use arrow keys or numpad keys to move your selection", performLayout: true );
+		window.WriteLine( $"Numpad keys will work even when this tab is not focused", performLayout: true );
+		window.WriteLine( $"Left/Right or Ctrl+Up/Down will seek to the next group", performLayout: true );
+		window.WriteLine( $"Clicking a string will select it for editing", performLayout: true );
+		window.WriteLine( $"Clicking a group will collapse/expand it", performLayout: true );
+		window.WriteLine( $"The middle numpad key ({Underscore("5")}) can be used to click", performLayout: true );
+		window.WriteLine();
+		window.WriteLine( $"Press {Underscore( Blue( "A" ) )} to add a new string", performLayout: true );
+		window.WriteLine( $"Press {Underscore( Red( "R" ) )} to remove or re-add a string or a whole group", performLayout: true );
+		window.WriteLine( $"Press {Underscore( Blue( "L" ) )} to change the language you're working on", performLayout: true );
+
+		window.PopScissors();
 	}
 
 	public event Action<Locale>? LocaleSelected;

@@ -35,16 +35,22 @@ public class TextBox {
 		return (x, y);
 	}
 
-	public void Draw ( Window window, bool wrap ) {
+	public void Draw ( Window window, bool wrap, string? colorizedText = null ) {
 		lastPrintedCount = 0;
 		lastLayout[0] = (window.DrawRect.X + window.CursorX - 1, window.DrawRect.Y + window.CursorY, true);
 
 		if ( string.IsNullOrEmpty( text ) ) window.Write( Placeholder, fg: ConsoleColor.DarkGray, wrap: wrap );
 		else {
-			while ( lastLayout.Count <= text.Length )
+			var tx = colorizedText ?? text;
+			var len = Window.WidthOf( tx );
+			while ( lastLayout.Count <= len )
 				lastLayout.Add( (0, 0, true) );
 
-			window.Write( $"{text[..selectionLeft]}{Window.RedBg( Window.Black( SelectedText ) )}{text[selectionRight..]}", performLayout: true, wrap: wrap, cb: ( index, pos, symbol, truncated ) => {
+			var left = tx.ColorizedSubstring( 0, selectionLeft );
+			var selected = tx.ColorizedSubstring( selectionLeft, selectionRight );
+			var right = tx.ColorizedSubstring( selectionRight, len );
+
+			window.Write( $"{left}{Window.RedBg( Window.Black( selected ) )}{right}", performLayout: true, wrap: wrap, cb: ( index, pos, symbol, truncated ) => {
 				lastLayout[index + 1] = (pos.x, pos.y, truncated);
 				lastPrintedCount = index + 1;
 			} );
@@ -315,7 +321,7 @@ public class TextBox {
 		return removedText;
 	}
 
-	protected void InsertString ( string value ) {
+	public void InsertString ( string value ) {
 		retainedCursorX = null;
 		insertString( value );
 	}

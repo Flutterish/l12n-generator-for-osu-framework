@@ -9,6 +9,7 @@ public class EditorScreen : ConsoleWindow {
 	LocalisationTab localisation;
 	KeyTreeTab tree;
 	Project project;
+	Window? helpWindow;
 
 	public EditorScreen ( Project project, Locale locale ) {
 		this.project = project;
@@ -23,6 +24,8 @@ public class EditorScreen : ConsoleWindow {
 		focused = tree;
 		tree.LocaleSelected += SetLocale;
 		tree.StringSelected += SetString;
+
+		localisation.FocusRequested += () => focused = localisation;
 
 		SetLocale( locale );
 	}
@@ -45,10 +48,16 @@ public class EditorScreen : ConsoleWindow {
 	public void SetString ( LocalisableString? str ) {
 		localisation.String = str;
 
-		if ( str != null )
+		if ( str != null ) {
 			focused = localisation;
-		else
+			localisation.Editing = true;
+
+			tree.SelectKey( str.Key );
+		}
+		else {
 			focused = tree;
+			localisation.Editing = false;
+		}
 	}
 
 	protected override void Draw () {
@@ -67,7 +76,7 @@ public class EditorScreen : ConsoleWindow {
 			if ( w.Width >= 14 ) {
 				w.CursorY = 0;
 				w.CursorX = w.Width - 5;
-				w.Write( "[?]" );
+				w.Write( $"[{Underscore("?")}]" );
 			}
 
 			w.CursorY = 0;
@@ -92,13 +101,41 @@ public class EditorScreen : ConsoleWindow {
 		localisation.PopScissors();
 		tree.PopScissors();
 
-		if ( tree.TextBox != null ) {
+		if ( focused == tree && tree.TextBox != null ) {
 			CursorVisible = true;
 			var (_, (x, y)) = tree.TextBox.CaretPosition;
 			SetCursor( tree.X + x + 1, tree.Y + y );
 		}
+		else if ( focused == localisation && localisation.Editing ) {
+			CursorVisible = true;
+			var (_, (x, y)) = localisation.TextBox.CaretPosition;
+			SetCursor( localisation.X + x + 1, localisation.Y + y );
+		}
+		else if ( tree.TextBox != null ) {
+			CursorVisible = true;
+			var (_, (x, y)) = tree.TextBox.CaretPosition;
+			SetCursor( tree.X + x + 1, tree.Y + y );
+		}
+		else if ( localisation.Editing ) {
+			CursorVisible = true;
+			var (_, (x, y)) = localisation.TextBox.CaretPosition;
+			SetCursor( localisation.X + x + 1, localisation.Y + y );
+		}
 		else {
 			CursorVisible = false;
+		}
+
+		if ( helpWindow != null ) {
+			helpWindow.Resize( (int)( Width * 0.7 ), (int)( Height * 0.7 ) );
+			helpWindow.X = ( Width - helpWindow.Width ) / 2;
+			helpWindow.Y = ( Height - helpWindow.Height ) / 2;
+
+			if ( focused == tree ) {
+				tree.DrawHelp( helpWindow );
+			}
+			else {
+				localisation.DrawHelp( helpWindow );
+			}
 		}
 	}
 
@@ -111,7 +148,11 @@ public class EditorScreen : ConsoleWindow {
 
 			var key = ReadKey();
 
-			if ( key.Key == ConsoleKey.F1 ) {
+			if ( helpWindow != null ) {
+				DetachWindow( helpWindow );
+				helpWindow = null;
+			}
+			else if ( key.Key == ConsoleKey.F1 ) {
 				focused = localisation;
 			}
 			else if ( key.Key == ConsoleKey.F2 ) {
@@ -121,8 +162,17 @@ public class EditorScreen : ConsoleWindow {
 				if ( key.Key is >= ConsoleKey.NumPad0 and <= ConsoleKey.NumPad9 ) {
 					tree.Handle( key );
 				}
-				else {
+				else if ( tree.TextBox != null ) {
 					tree.Handle( key );
+				}
+				else if ( focused == tree ? tree.Handle( key ) : localisation.Handle( key ) ) { }
+				else if ( key.KeyChar == '?' ) {
+					helpWindow = new();
+					AttachWindow( helpWindow );
+				}
+				else if ( focused == tree ? localisation.Handle( key ) : tree.Handle( key ) ) { }
+				else if ( key.Key == ConsoleKey.Escape ) {
+					break;
 				}
 			}
 		}

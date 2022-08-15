@@ -83,6 +83,13 @@ public class TextLayout {
 				newLine();
 				addLetter( s, visible: false );
 			}
+			else if ( s == '\t' ) {
+				int count = (( x + Window.tabAlign ) / Window.tabAlign) * Window.tabAlign - x;
+				for ( int i = 0; i < count && rect.Width > x + rect.X; i++ ) {
+					addLetter( ' ' );
+					x++;
+				}
+			}
 			else {
 				if ( x >= rect.Width ) newLine();
 

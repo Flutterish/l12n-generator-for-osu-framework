@@ -13,11 +13,11 @@ public class Project {
 	public Dictionary<string, Locale> Locales = new();
 	public Dictionary<string, HashSet<Locale>> LocalesContainingKey = new();
 
-	public LocalisableString GetBestGuide ( Locale locale, string key ) {
+	public LocalisableString? GetBestGuide ( Locale locale, string key ) {
 		if ( locale != Mainlocale && Mainlocale.Strings.TryGetValue( key, out var str ) )
 			return str;
 
-		return LocalesContainingKey[key].FirstOrDefault( x => x != locale )?.Strings[ key ] ?? locale.Strings[key];
+		return LocalesContainingKey[key].FirstOrDefault( x => x != locale )?.Strings[key];
 	}
 
 	public LocaleNamespace GetLocaleNamespace ( Locale locale, string? key = null ) {
@@ -126,7 +126,7 @@ public class Project {
 	public void UpdateMissing ( Locale locale ) {
 		foreach ( var i in GetMissingStrings( locale ) ) {
 			var tree = GetLocaleNamespace( locale, i );
-			tree.MissingKeys.Add( i.Split( '.' )[^1], i );
+			tree.MissingKeys.TryAdd( i.Split( '.' )[^1], i );
 		}
 	}
 

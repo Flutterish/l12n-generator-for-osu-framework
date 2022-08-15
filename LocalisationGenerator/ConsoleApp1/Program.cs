@@ -27,7 +27,7 @@ public class Program {
 	string Green ( string str )
 		=> $"{esc( 'G' )}{str}{esc( ':' )}";
 	string Cyan ( string str )
-		=> $"{esc( 'B' )}{str}{esc( ':' )}";
+		=> $"{esc( 'C' )}{str}{esc( ':' )}";
 
 	string startingPath = Directory.GetCurrentDirectory();
 	void Run () {
@@ -291,6 +291,7 @@ public class Program {
 		EditorScreen screen = new( project, locale );
 
 		screen.Run();
+		Console.Clear();
 		Console.CursorVisible = true;
 
 		return;
@@ -813,7 +814,8 @@ public class Program {
 					'G' => ConsoleColor.Green,
 					'Y' => ConsoleColor.Yellow,
 					'R' => ConsoleColor.Red,
-					'B' => ConsoleColor.Cyan,
+					'C' => ConsoleColor.Cyan,
+					'B' => ConsoleColor.Blue,
 					'N' => ConsoleColor.DarkGray,
 					_ => null
 				} );

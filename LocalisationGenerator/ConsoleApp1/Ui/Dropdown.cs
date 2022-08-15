@@ -14,7 +14,7 @@ public class Dropdown<T> {
 		Stringifier = stringifier ?? ( x => $"{x}" );
 	}
 
-	public void Draw ( Window window, int? heightLimit = null ) {
+	public void Draw ( Window window, bool drawSelected = true, int? heightLimit = null ) {
 		if ( Options.Count != 0 )
 			SelectedIndex = Math.Clamp( SelectedIndex, 0, Options.Count - 1 );
 
@@ -40,7 +40,7 @@ public class Dropdown<T> {
 				window.WriteLine( Window.Yellow( " v" ), wrap: false );
 			}
 			else {
-				if ( i == SelectedIndex ) {
+				if ( i == SelectedIndex && drawSelected ) {
 					window.Write( $"{Window.Yellow( LeftSelection )}{Stringifier( Options[i] )}{Window.Yellow( RightSelection )}", wrap: false );
 					window.CursorX -= RightSelection.Length;
 					window.WriteLine( Window.Yellow( RightSelection ), wrap: false );

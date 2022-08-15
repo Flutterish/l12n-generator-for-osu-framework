@@ -42,7 +42,7 @@ public class LocalisableString {
 				sb.Append( '{' );
 				sb.Append( n[0] );
 				if ( n.Length > 1 ) {
-					if ( colorizeInnards ) sb.Append( Program.esc( 'B' ) );
+					if ( colorizeInnards ) sb.Append( Program.esc( 'C' ) );
 					sb.Append( ':' );
 					sb.Append( string.Join( ':', n[1..] ) );
 					if ( colorizeInnards ) sb.Append( Program.esc( ':' ) );

@@ -121,11 +121,19 @@ public class Window {
 		}
 	}
 
+	public const int tabAlign = 8;
 	public void Write ( Symbol s ) {
 		var rect = DrawRect;
 
 		if ( s.Char == '\n' ) {
 			WriteLine();
+		}
+		else if ( s.Char == '\t' ) {
+			int count = (( CursorX + tabAlign ) / tabAlign) * tabAlign - CursorX;
+			for ( int i = 0; i < count && Width > CursorX + rect.X; i++ ) {
+				buffer[CursorX + rect.X, CursorY + rect.Y] = s with { Char = ' ' };
+				CursorX++;
+			}
 		}
 		else {
 			if ( CursorX >= rect.Width ) {
@@ -180,7 +188,7 @@ public class Window {
 	}
 
 	public delegate void LayoutCallback ( int printableIndex, (int x, int y) position, Symbol symbol, bool truncated = false );
-	public void Write ( string str, bool performLayout = false, AnsiColor? fg = null, AnsiColor? bg = null, Attrib? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
+	public void Write ( string str, bool performLayout = false, bool showFormatting = false, AnsiColor? fg = null, AnsiColor? bg = null, Attrib? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
 		int printableIndex = -1;
 
 		if ( fg is AnsiColor f )
@@ -198,6 +206,8 @@ public class Window {
 			var layout = new TextLayout( str, rect, CursorX, CursorY, wrap );
 			foreach ( var line in layout.Lines ) {
 				if ( !firstLine ) {
+					if ( showFormatting && CursorX < rect.Width )
+						buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = '⏎', Fg = ConsoleColor.DarkGray };
 					WriteLine();
 				}
 
@@ -240,7 +250,16 @@ public class Window {
 								else
 									cb?.Invoke( printableIndex++, (rect.X + CursorX, rect.Y + CursorY), empty with { Char = c } );
 
-								buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = rtl && c == ' ' ? '\u200F' : c };
+								if ( c == ' ' ) {
+									if ( showFormatting )
+										buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = '·', Fg = ConsoleColor.DarkGray };
+									else
+										buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = rtl ? '\u200F' : ' ' };
+								}
+								else {
+									buffer[rect.X + CursorX, rect.Y + CursorY] = empty with { Char = c };
+								}
+									
 								CursorX++;
 							}
 						}
@@ -290,11 +309,15 @@ public class Window {
 		if ( attr is Attrib )
 			PopAttribute();
 	}
-	public void WriteLine ( string str, bool performLayout = false, AnsiColor? fg = null, AnsiColor? bg = null, Attrib? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
-		Write( str + '\n', performLayout, fg, bg, attr, wrap, cb );
+	public void WriteLine ( string str, bool performLayout = false, bool showFormatting = false, AnsiColor? fg = null, AnsiColor? bg = null, Attrib? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
+		Write( str + '\n', performLayout, showFormatting, fg, bg, attr, wrap, cb );
 	}
 
-	public int WidthOf ( string str ) {
+	public void WriteError ( string str, bool performLayout = false, bool showFormatting = false, AnsiColor? fg = null, AnsiColor? bg = null, Attrib? attr = null, bool wrap = true, LayoutCallback? cb = null ) {
+		Write( RedBg( Black( str ) ) + '\n', performLayout, showFormatting, fg, bg, attr, wrap, cb );
+	}
+
+	public static int WidthOf ( string str ) {
 		return str.Length - TextLayout.EscapeRegex.Matches( str ).Count * 2;
 	}
 
