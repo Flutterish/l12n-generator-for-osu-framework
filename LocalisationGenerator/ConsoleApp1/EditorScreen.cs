@@ -160,6 +160,10 @@ public class EditorScreen : ConsoleWindow {
 
 			var key = ReadKey();
 
+			if ( tree.SelectingLocale ) {
+				focused = tree;
+			}
+
 			if ( helpWindow != null ) {
 				DetachWindow( helpWindow );
 				helpWindow = null;

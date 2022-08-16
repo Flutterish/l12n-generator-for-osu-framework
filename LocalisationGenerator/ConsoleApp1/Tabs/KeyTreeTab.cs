@@ -222,7 +222,7 @@ public class KeyTreeTab : Window {
 				}
 			}
 			else if ( ns.Parent != null ) {
-				project.ToggleNamespaceRemoval( Locale, ns.Value );
+				project.ToggleNamespaceRemoval( ns.Value );
 			}
 
 			return true;

@@ -77,6 +77,7 @@ public class Project {
 			LocaleNamespaces.Add( locale.ISO, ns = new( "" ) );
 		addKeyToNamspace( ns, key );
 	}
+
 	public void OnLocaleKeyRemoved ( Locale locale, string key ) {
 		var list = LocalesContainingKey[key];
 		list.Remove( locale );
@@ -132,17 +133,30 @@ public class Project {
 
 	public void Save ( Locale? locale = null ) {
 		Directory.CreateDirectory( Config.L12NFilesLocation );
+		List<string> strings = new();
 		foreach ( var loc in locale != null ? (IEnumerable<Locale>)new[] { locale } : Locales.Values ) {
+			void addStrings ( LocaleNamespace ns ) {
+				foreach ( var i in ns.Keys.Where( x => !ns.KeysToBeRemoved.Contains( x.Key ) ).OrderBy( x => x.Key ) ) {
+					strings.Add( i.Value );
+				}
+				foreach ( var nested in ns.Nested.Where( x => !x.Value.ScheduledForRemoval ).OrderBy( x => x.Key ) ) {
+					addStrings( nested.Value );
+				}
+			}
+			addStrings( GetLocaleNamespace( loc ) );
+
 			File.WriteAllText(
 				Path.Combine( Config.L12NFilesLocation, $"{loc.ISO}.json" ),
 				JsonConvert.SerializeObject( new {
 					iso = loc.ISO,
-					data = loc.Strings.ToImmutableSortedDictionary(
-						ks => ks.Key,
-						vs => vs.Value.Value
+					data = strings.ToImmutableSortedDictionary(
+						ks => ks,
+						vs => loc.Strings[vs]
 					)
 				}, Formatting.Indented )
 			);
+
+			strings.Clear();
 		}
 	}
 
@@ -157,7 +171,7 @@ public class Project {
 			ns.KeysToBeRemoved.Remove( key );
 	}
 
-	public void ToggleNamespaceRemoval ( Locale locale, LocaleNamespace ns, bool? set = null ) {
+	public void ToggleNamespaceRemoval ( LocaleNamespace ns, bool? set = null ) {
 		ns.ScheduledForRemoval = set is bool b ? b : !ns.ScheduledForRemoval;
 	}
 
