@@ -151,7 +151,7 @@ public class Project {
 					iso = loc.ISO,
 					data = strings.ToImmutableSortedDictionary(
 						ks => ks,
-						vs => loc.Strings[vs]
+						vs => loc.Strings[vs].Value
 					)
 				}, Formatting.Indented )
 			);
