@@ -27,14 +27,14 @@ public class LocalisableString {
 			if ( i == "{{" ) {
 				if ( colorizeInnards ) sb.Append( Program.esc( 'N' ) );
 				sb.Append( i[0] );
-				if ( colorizeInnards ) sb.Append( Program.esc( '\0' ) );
+				if ( colorizeInnards ) sb.Append( Program.esc( ':' ) );
 				sb.Append( i[1] );
 			}
 			else if ( i == "}}" ) {
 				sb.Append( i[0] );
 				if ( colorizeInnards ) sb.Append( Program.esc( 'N' ) );
 				sb.Append( i[1] );
-				if ( colorizeInnards ) sb.Append( Program.esc( '\0' ) );
+				if ( colorizeInnards ) sb.Append( Program.esc( ':' ) );
 			}
 			else if ( i.Length > 1 && i.StartsWith( "{" ) ) {
 				sb.Append( Program.esc( 'G' ) );
@@ -42,23 +42,23 @@ public class LocalisableString {
 				sb.Append( '{' );
 				sb.Append( n[0] );
 				if ( n.Length > 1 ) {
-					if ( colorizeInnards ) sb.Append( Program.esc( 'B' ) );
+					if ( colorizeInnards ) sb.Append( Program.esc( 'C' ) );
 					sb.Append( ':' );
 					sb.Append( string.Join( ':', n[1..] ) );
-					if ( colorizeInnards ) sb.Append( Program.esc( '\0' ) );
+					if ( colorizeInnards ) sb.Append( Program.esc( ':' ) );
 				}
 				sb.Append( '}' );
-				sb.Append( Program.esc( '\0' ) );
+				sb.Append( Program.esc( ':' ) );
 			}
 			else if ( i == "|" || i == "\\n" || i == "\\t" ) {
 				sb.Append( Program.esc( 'R' ) );
 				sb.Append( i );
-				sb.Append( Program.esc( '\0' ) );
+				sb.Append( Program.esc( ':' ) );
 			}
 			else if ( i.Length == 2 && i.StartsWith( '\\' ) ) {
 				sb.Append( Program.esc( 'N' ) );
 				sb.Append( '\\' );
-				sb.Append( Program.esc( '\0' ) );
+				sb.Append( Program.esc( ':' ) );
 				sb.Append( i[1] );
 			}
 			else {

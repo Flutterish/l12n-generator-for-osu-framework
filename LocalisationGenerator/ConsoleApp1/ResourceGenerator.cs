@@ -1,9 +1,7 @@
 ﻿using Humanizer;
 using ICSharpCode.Decompiler.Util;
-using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 using System.Text;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace LocalisationGenerator;
 
@@ -119,6 +117,6 @@ public class ResourceGenerator {
 					writer.Generate();
 			}
 		}
-		saveNamespace( rootPath, config.Namespace, Array.Empty<string>(), summary.RootNamespace );
+		saveNamespace( rootPath, config.Namespace + ".Resx", Array.Empty<string>(), summary.RootNamespace );
 	}
 }

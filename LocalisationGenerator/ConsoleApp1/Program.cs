@@ -1,7 +1,6 @@
 ﻿using LocalisationGenerator;
+using LocalisationGenerator.Curses;
 using Newtonsoft.Json;
-using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
@@ -14,34 +13,27 @@ public class Program {
 		new Program().Run();
 	}
 
-	Dictionary<string, Locale> locales = new();
-	Dictionary<string, HashSet<Locale>> localesContainingKey = new();
-	void onLocaleKeyAdded ( Locale locale, string key ) {
-		if ( !localesContainingKey.TryGetValue( key, out var list ) ) {
-			localesContainingKey.Add( key, list = new() );
-		}
-		list.Add( locale );
-	}
-	void onLocaleKeyRemoved ( Locale locale, string key ) {
-		var list = localesContainingKey[key];
-		list.Remove( locale );
-		if ( list.Count == 0 )
-			localesContainingKey.Remove( key );
-	}
-	Locale mainlocale = null!;
+	Project project = null!;
+	Config config => project.Config;
+	Locale mainlocale => project.Mainlocale;
+	Dictionary<string, Locale> locales => project.Locales;
+	Dictionary<string, HashSet<Locale>> localesContainingKey => project.LocalesContainingKey;
 
 	string Red ( string str )
-		=> $"{esc( 'R' )}{str}{esc( '\0' )}";
+		=> $"{esc( 'R' )}{str}{esc( ':' )}";
 	string Yellow ( string str )
-		=> $"{esc( 'Y' )}{str}{esc( '\0' )}";
+		=> $"{esc( 'Y' )}{str}{esc( ':' )}";
 	string Green ( string str )
-		=> $"{esc( 'G' )}{str}{esc( '\0' )}";
+		=> $"{esc( 'G' )}{str}{esc( ':' )}";
 	string Cyan ( string str )
-		=> $"{esc( 'B' )}{str}{esc( '\0' )}";
+		=> $"{esc( 'C' )}{str}{esc( ':' )}";
 
-	Config config = null!;
 	string startingPath = Directory.GetCurrentDirectory();
 	void Run () {
+		AppDomain.CurrentDomain.ProcessExit += (_, _) => {
+			project?.Save();
+		};
+
 		fgColorStack.Push( ConsoleColor.Gray );
 		bgColorStack.Push( ConsoleColor.Black );
 
@@ -50,14 +42,15 @@ public class Program {
 		if ( File.Exists( configPath ) ) {
 			WriteLine( "There is a config file in this directory - load?" );
 			if ( Select( new[] { "Load", "Use different one" } ) == "Load" ) {
-				config = JsonConvert.DeserializeObject<Config>( File.ReadAllText( configPath ) )!;
+				var config = JsonConvert.DeserializeObject<Config>( File.ReadAllText( configPath ) )!;
+				project = new( config );
 				Console.Clear();
 			}
 		}
 
 	selectProject:
 		Directory.SetCurrentDirectory( startingPath );
-		if ( config is null ) {
+		if ( project is null ) {
 			while ( true ) {
 				WriteLine( $"Where should I load the project from? (it should have an {Green("l12nConfig.json")} file)" );
 				if ( Select( new[] { "Select path", "Create new" } ) == "Select path" ) {
@@ -65,7 +58,8 @@ public class Program {
 					if ( Directory.Exists( path ) ) {
 						if ( File.Exists( Path.Combine( path, configPath ) ) ) {
 							Directory.SetCurrentDirectory( path );
-							config = JsonConvert.DeserializeObject<Config>( File.ReadAllText( configPath ) )!;
+							var config = JsonConvert.DeserializeObject<Config>( File.ReadAllText( configPath ) )!;
+							project = new( config );
 							break;
 						}
 						else {
@@ -77,7 +71,8 @@ public class Program {
 					}
 				}
 				else {
-					config = Setup();
+					var config = Setup();
+					project = new( config );
 					SaveConfig();
 					break;
 				}
@@ -91,23 +86,21 @@ public class Program {
 			WriteLine( $"Local project at {Green(Directory.GetCurrentDirectory())}" );
 		}
 		else {
-			WriteLine( $"Project       : {esc( 'G' )}{Path.GetFileName( config.ProjectPath )}{esc( '\0' )}" );
-			WriteLine( $"Namespace     : {esc( 'G' )}{config.Namespace}{esc( '\0' )}" );
+			WriteLine( $"Project       : {esc( 'G' )}{Path.GetFileName( config.ProjectPath )}{esc( ':' )}" );
+			WriteLine( $"Namespace     : {esc( 'G' )}{config.Namespace}{esc( ':' )}" );
 		}
-		WriteLine( $"Default Locale: {esc( 'Y' )}{LocalesLUT.LocaleName( config.DefaultLocale )} [{config.DefaultLocale}]{esc( '\0' )}" );
+		WriteLine( $"Default Locale: {esc( 'Y' )}{LocalesLUT.LocaleName( config.DefaultLocale )} [{config.DefaultLocale}]{esc( ':' )}" );
 		WriteLine( "" );
-
-		Load();
 
 		string add = "Add new locale";
 		string edit = "Edit locale";
 		string rename = "Rename key";
 		string delete = Red("Delete key");
-		string export = $"Generate {esc( 'G' )}.cs{esc( '\0' )} and {esc( 'G' )}.resx{esc( '\0' )} files";
+		string export = $"Generate {esc( 'G' )}.cs{esc( ':' )} and {esc( 'G' )}.resx{esc( ':' )} files";
 		string link = $"Link a {Green(".csproj")} file";
 		string summarise = $"Summary";
 		string change = $"Change project";
-		string exit = $"{esc( 'R' )}Exit{esc( '\0' )}";
+		string exit = $"{esc( 'R' )}Exit{esc( ':' )}";
 
 		List<string> options = new();
 		while ( true ) {
@@ -165,18 +158,18 @@ public class Program {
 								i.Strings[key].Key = newKey;
 								i.Strings[newKey] = i.Strings[key];
 								i.Strings.Remove( key );
-								onLocaleKeyRemoved( i, key );
+								project.OnLocaleKeyRemoved( i, key );
 							}
 							else {
 								i.Strings[key].Key = newKey;
 								i.Strings[newKey] = i.Strings[key];
 								i.Strings.Remove( key );
-								onLocaleKeyRemoved( i, key );
-								onLocaleKeyAdded( i, newKey );
+								project.OnLocaleKeyRemoved( i, key );
+								project.OnLocaleKeyAdded( i, newKey );
 							}
 						}
 
-						Save( onlyCurrent: false );
+						project.Save();
 					}
 				}
 				else {
@@ -189,7 +182,7 @@ public class Program {
 						i.Strings.Remove( key );
 					}
 
-					Save( onlyCurrent: false );
+					project.Save();
 				}
 			}
 			else if ( option == delete ) {
@@ -204,7 +197,7 @@ public class Program {
 					}
 					localesContainingKey.Remove( key );
 					WriteLine( Red("Removed") );
-					Save( onlyCurrent: false );
+					project.Save();
 				}
 				else {
 					WriteLine( "Cancelled" );
@@ -271,7 +264,7 @@ public class Program {
 				}
 			}
 			else if ( option == change ) {
-				config = null;
+				project = null;
 				goto selectProject;
 			} 
 			else if ( option == exit ) {
@@ -286,481 +279,18 @@ public class Program {
 		return $"[{new string( '#', fill )}{new string( ' ', width - fill )}] {progress*100:N2}%";
 	}
 
-	void Load () {
-		localesContainingKey.Clear();
-		locales.Clear();
-
-		if ( Directory.Exists( config.L12NFilesLocation ) ) {
-			foreach ( var i in Directory.EnumerateFiles( config.L12NFilesLocation, "*.json" ) ) {
-				try {
-					var file = JsonConvert.DeserializeObject<SaveFormat>( File.ReadAllText( i ) );
-					if ( file is null )
-						continue;
-
-					var locale = new Locale( file.Iso );
-					locales.Add( file.Iso, locale );
-					foreach ( var (key, value) in file.Data ) {
-						locale.Strings.Add( key, new LocalisableString( key, locale.ISO ) { Value = value } );
-						onLocaleKeyAdded( locale, key );
-					}
-				}
-				catch { }
-			}
-		}
-
-		if ( !locales.ContainsKey( config.DefaultLocale ) ) {
-			locales.Add( config.DefaultLocale, new( config.DefaultLocale ) );
-		}
-		mainlocale = locales[config.DefaultLocale];
-	}
-
-	void Save ( bool onlyCurrent = true ) {
-		Directory.CreateDirectory( config.L12NFilesLocation );
-		foreach ( var locale in onlyCurrent ? (IEnumerable<Locale>)new[] { currentLocale } : locales.Values ) {
-			File.WriteAllText( 
-				Path.Combine( config.L12NFilesLocation, $"{locale.ISO}.json" ),  
-				JsonConvert.SerializeObject( new {
-					iso = locale.ISO,
-					data = locale.Strings.ToImmutableSortedDictionary(
-						ks => ks.Key,
-						vs => vs.Value.Value
-					)
-				}, Newtonsoft.Json.Formatting.Indented )
-			);
-		}
-	}
-
 	void SaveConfig () {
 		File.WriteAllText( configPath, JsonConvert.SerializeObject( config, Newtonsoft.Json.Formatting.Indented ) );
 	}
 
 	public static readonly Regex keyRegex = new( "^[a-zA-Z_][a-zA-Z_0-9-]*(\\.[a-zA-Z_][a-zA-Z_0-9-]*)*$", RegexOptions.Compiled );
-	Locale currentLocale = null!;
 	void Edit ( Locale locale ) {
-		currentLocale = locale;
+		EditorScreen screen = new( project, locale );
 
-		string edit = "Edit string";
-		string addMissing = "Add missing string";
-		string add = "Add new string";
-		string remove = $"{esc( 'R' )}Remove string{esc( '\0' )}";
-
-		List<string> options = new();
-		int keyIndex = 0;
-		LocalisableString? selectString () {
-			selectIndex = keyIndex;
-			keepSelectIndex = true;
-			var key = Select( locale.Strings.Keys.OrderBy( x => x ).ToList(), s => $"{Yellow( s )}: {locale.Strings[s].ColoredValue}", allowCancel: true );
-			if ( key == null )
-				return null;
-
-			keyIndex = selectIndex;
-			return locale.Strings[key];
-		}
-		List<string> missing = new();
-		void updateMissing () {
-			missing.Clear();
-			foreach ( var (key, list) in localesContainingKey ) {
-				if ( !list.Contains( locale ) )
-					missing.Add( key );
-			}
-		}
-		updateMissing();
-		while ( true ) {
-			Split();
-			WriteLine( $"Locale: {esc( 'Y' )}{locale.Name} [{locale.ISO}]{esc( '\0' )}" );
-
-			options.Clear();
-
-			if ( missing.Any() )
-				options.Add( addMissing );
-			options.Add( add );
-			if ( locale.Strings.Count != 0 )
-				options.Add( edit );
-			if ( locale.Strings.Count != 0 )
-				options.Add( remove );
-
-			var option = Select( options, allowCancel: true );
-			Split();
-			if ( option == null ) {
-				return;
-			}
-
-			select:
-			if ( option == edit ) {
-				var str = selectString();
-				if ( str == null )
-					continue;
-
-				keyIndex = selectIndex;
-				var op = EditString( str, missing.Any() );
-				Save();
-				switch ( op ) {
-					case 1:
-						option = addMissing;
-						goto select;
-					case 2:
-						option = add;
-						goto select;
-				}
-			}
-			else if ( option == addMissing ) {
-				var guides = new Dictionary<string, string>();
-				foreach ( var k in missing.OrderBy( x => x ) ) {
-					var possibleGuides = localesContainingKey[k].ToList();
-					var guideLocale = possibleGuides.FirstOrDefault( x => x == mainlocale ) ?? possibleGuides.ElementAtOrDefault( 0 );
-					var guideStr = guideLocale?.Strings[k];
-					guides.Add( k, guideStr is null ? Yellow(k) : $"{Yellow(k)}: {Red("\"")}{guideStr.ColoredValue}{Red( "\"" )}" );
-				}
-
-				var key = Select( missing, k => guides[k], allowCancel: true );
-				if ( key == null )
-					continue;
-
-				LocalisableString str = new( key, locale.ISO );
-				locale.Strings.Add( key, str );
-				onLocaleKeyAdded( locale, key );
-				updateMissing();
-
-				var op = EditString( str, missing.Any() );
-				Save();
-				switch ( op ) {
-					case 1:
-						option = addMissing;
-						goto select;
-					case 2:
-						option = add;
-						goto select;
-				}
-			}
-			else if ( option == add ) {
-				WriteLine( "Key:" );
-				WriteLine( $"You can group keys with dots, for example {Yellow("chat.send")} or {Yellow("options.general")}" );
-				var key = Prompt().Trim();
-				if ( locale.Strings.ContainsKey( key ) )
-					Error( "Key already exists" );
-				else if ( !keyRegex.IsMatch( key ) )
-					Error( "Invalid key" );
-				else {
-					LocalisableString str = new( key, locale.ISO );
-					locale.Strings.Add( key, str );
-					onLocaleKeyAdded( locale, key );
-					updateMissing();
-
-					var op = EditString( str, missing.Any() );
-					Save();
-					switch ( op ) {
-						case 1:
-							option = addMissing;
-							goto select;
-						case 2:
-							option = add;
-							goto select;
-					}
-				}
-			}
-			else if ( option == remove ) {
-				var str = selectString();
-				if ( str == null )
-					continue;
-
-				locale.Strings.Remove( str.Key );
-				onLocaleKeyRemoved( locale, str.Key );
-				updateMissing();
-				Save();
-			}
-		}
-	}
-
-	Dictionary<string, string> sampleArgs = new();
-	int EditString ( LocalisableString str, bool anyMissing ) {
-		var immediateEdit = true;
-		var edit = "Edit";
-		var editArgs = "Edit sample arguments";
-		var changeGuide = "Change guide";
-		var finish = $"{esc( 'R' )}Finish{esc( '\0' )}";
-		var addMissing = "Add next missing string";
-		var addNext = "Add next string";
-
-		var possibleGuides = localesContainingKey[str.Key].Where( x => x != currentLocale ).ToList();
-		var guideLocale = possibleGuides.FirstOrDefault( x => x == mainlocale ) ?? possibleGuides.ElementAtOrDefault( 0 );
-		var guideStr = guideLocale?.Strings[str.Key];
-
-		List<string> options = new();
-
-		Dictionary<string, int> indices = new();
-		void showResult () {
-			var args = str.Args.ToList();
-			Write( "\r\u001B[0J" );
-			if ( args.Any() ) WriteLine( "Sample arguments:" );
-			var argList = new object[args.Count];
-			indices.Clear();
-			int index = 0;
-			foreach ( var i in args ) {
-				if ( !sampleArgs.TryGetValue( i, out var arg ) ) {
-					sampleArgs.Add( i, arg = "sample text" );
-				}
-
-				indices.Add( i, index );
-				if ( double.TryParse( arg, out var number ) )
-					argList[index++] = number;
-				else if ( DateTime.TryParse( arg, out var date ) )
-					argList[index++] = date;
-				else
-					argList[index++] = arg;
-
-				WriteLine( $"{i}: {Green( arg )}" );
-			}
-
-			WriteLine( "\nResult:" );
-			try {
-				WriteLine( str.ColoredFormat( argList, indices ) );
-			}
-			catch {
-				Error( "Incorrectly formated value" );
-			}
-			if ( guideStr != null ) {
-				WriteLine( "\nGuide:" );
-				bool okay = true;
-				var missing = str.Args.Except( guideStr.Args );
-				if ( missing.Any() ) {
-					Error( $"This string has arguments the guide doesn't have: {string.Join( ", ", missing )}" );
-					okay = false;
-				}
-				missing = guideStr.Args.Except( str.Args );
-				if ( missing.Any() ) {
-					Error( $"This string doesn't have arguments the guide has: {string.Join( ", ", missing )}" );
-					okay = false;
-				}
-
-				try {
-					if ( okay ) WriteLine( guideStr.ColoredFormat( argList, indices ) );
-				}
-				catch {
-					Error( "Incorrectly formated value" );
-				}
-			}
-			WriteLine( "" );
-		}
-
-		while ( true ) {
-			Console.Clear();
-			WriteLine( $"Locale: {esc( 'Y' )}{currentLocale.Name} [{currentLocale.ISO}]{esc( '\0' )}" );
-			WriteLine( $"Key: {esc('Y')}{str.Key}{esc('\0')}\n" );
-			WriteLine( $"To create a place for a value to be inserted, use a number or text surrounded by {Green("{}")}, for example {Red("\"")}Hello, {Green("{name}")}!{Red( "\"" )}" );
-			WriteLine( $"To insert a tab or new-line you can use {Red( "\\t" )} and {Red( "\\n" )} respectively" );
-			WriteLine( $"To insert a literal {{, }} or \\, double them up like {Red( "\"" )}{{{{ and }}}} and \\\\{Red( "\"" )}" );
-			WriteLine( $"You can also specify how numbers and dates should be formated like {Green($"{{number{Cyan(":N2")}}}")}" );
-			WriteLine( $"For more info refer to {Cyan( "https://docs.microsoft.com/en-us/dotnet/standard/base-types/standard-numeric-format-strings" )}\n" );
-			if ( guideStr != null ) {
-				WriteLine( $"Guide [{guideLocale!.ISO}]: {esc( 'R' )}\"{esc( '\0' )}{guideStr.ColoredValue}{esc( 'R' )}\"{esc( '\0' )}" );
-			}
-			else {
-				WriteLine( $"Guide: {esc('R')}None{esc('\0')}" );
-			}
-			Write( $"Value: {esc( 'R' )}\"{esc( '\0' )}" );
-			int x = Console.CursorLeft;
-			int y = Console.CursorTop;
-			WriteLine( $"{str.ColoredValue}{esc( 'R' )}\"{esc( '\0' )}\n" );
-
-			int rx = Console.CursorLeft;
-			int ry = Console.CursorTop;
-			showResult();
-
-			options.Clear();
-			if ( anyMissing )
-				options.Add( addMissing );
-			options.Add( addNext );
-			options.Add( edit );
-			if ( str.Args.Any() )
-				options.Add( editArgs );
-			if ( possibleGuides.Count > 1 )
-				options.Add( changeGuide );
-			options.Add( finish );
-
-			var option = immediateEdit ? edit : Select( options );
-			immediateEdit = false;
-			if ( option == edit ) {
-				EditField( x, y, str.Value, s => {
-					str.Value = s;
-					Write( $"{str.ColoredValue}{esc( 'R' )}\"{esc( '\0' )}\u001b[0J" );
-					Console.CursorLeft = rx;
-					Console.CursorTop = ry;
-					showResult();
-				} );
-			}
-			else if ( option == editArgs ) {
-				Split();
-				var arg = Select( str.Args.ToList(), allowCancel: true );
-				if ( arg is null )
-					continue;
-
-				var value = Prompt();
-				sampleArgs[arg] = value;
-			}
-			else if ( option == changeGuide ) {
-				Split();
-				var guide = Select( possibleGuides, l => $"{l.Name} [{l.ISO}]: {Red( "\"" )}{l.Strings[str.Key].ColoredValue}{Red( "\"" )}", allowCancel: true );
-				if ( guide == null )
-					continue;
-
-				guideLocale = guide;
-				guideStr = guide.Strings[str.Key];
-			}
-			else if ( option == finish ) {
-				Console.Clear();
-				return 0;
-			}
-			else if ( option == addMissing ) {
-				Console.Clear();
-				return 1;
-			}
-			else if ( option == addNext ) {
-				Console.Clear();
-				return 2;
-			}
-		}
-	}
-
-	string EditField ( int x, int y, string str, Action<string>? renderer ) {
-		Stopwatch stopwatch = new();
-		List<(string, int)> history = new() { (str, 0) };
-		int historyIndex = 0;
-
-		var initial = str;
-		Console.CursorVisible = false;
-		var rx = Console.CursorLeft;
-		var ry = Console.CursorTop;
-		renderer ??= Console.Write;
-
-		int index = 0;
-		while ( true ) {
-			Console.CursorLeft = x;
-			Console.CursorTop = y;
-			Console.Write( new string( ' ', Console.BufferWidth - x ) );
-			Console.CursorLeft = x;
-			Console.CursorTop = y;
-			renderer( str );
-			Console.CursorLeft = (x + index) % Console.BufferWidth;
-			Console.CursorTop = y + ( x + index ) / Console.BufferWidth;
-			Bg( ConsoleColor.White );
-			Fg( ConsoleColor.Black );
-			Console.Write( index == str.Length ? " " : str[index] );
-			Fg( null );
-			Bg( null );
-
-			var key = Console.ReadKey();
-
-			if ( stopwatch.ElapsedMilliseconds > 500 ) {
-				stopwatch.Stop();
-				stopwatch.Reset();
-
-				while ( history.Count > historyIndex + 1 ) {
-					history.RemoveAt( history.Count - 1 );
-				}
-				history.Add( (str, index) );
-				historyIndex++;
-			}
-
-			bool isAtWordBoundary () {
-				return ( str[index - 1] == ' ' ) != ( str[index] == ' ' );
-			}
-
-			bool edited = false;
-			if ( key.Key is ConsoleKey.Escape ) {
-				str = initial;
-				Console.CursorLeft = x;
-				Console.CursorTop = y;
-				Console.Write( new string( ' ', Console.BufferWidth - x ) );
-				Console.CursorLeft = x;
-				Console.CursorTop = y;
-				renderer( str );
-				break;
-			}
-			else if ( key.Key is ConsoleKey.Enter ) {
-				break;
-			}
-			else if ( key.Key is ConsoleKey.LeftArrow ) {
-				index = Math.Max( 0, index - 1 );
-
-				if ( key.Modifiers == ConsoleModifiers.Control ) {
-					while ( index != 0 && !isAtWordBoundary() ) {
-						index = Math.Max( 0, index - 1 );
-					}
-				}
-			}
-			else if ( key.Key is ConsoleKey.RightArrow ) {
-				index = Math.Min( str.Length, index + 1 );
-
-				if ( key.Modifiers == ConsoleModifiers.Control ) {
-					while ( index != str.Length && !isAtWordBoundary() ) {
-						index = Math.Min( str.Length, index + 1 );
-					}
-				}
-			}
-			else if ( key.Key is ConsoleKey.UpArrow ) {
-				index = Math.Max( 0, index - Console.BufferWidth );
-			}
-			else if ( key.Key is ConsoleKey.DownArrow ) {
-				index = Math.Min( str.Length, index + Console.BufferWidth );
-			}
-			else if ( key.Key is ConsoleKey.Backspace ) {
-				if ( index != 0 ) {
-					int to = index;
-					index--;
-					if ( key.Modifiers == ConsoleModifiers.Control ) {
-						while ( index != 0 && !isAtWordBoundary() ) {
-							index = Math.Max( 0, index - 1 );
-						}
-					}
-
-					str = str[0..index] + str[to..];
-					edited = true;
-				}
-			}
-			else if ( key.Key is ConsoleKey.Delete ) {
-				if ( index != str.Length ) {
-					var from = index;
-
-					index++;
-					if ( key.Modifiers == ConsoleModifiers.Control ) {
-						while ( index != str.Length && !isAtWordBoundary() ) {
-							index = Math.Min( str.Length, index + 1 );
-						}
-					}
-
-					str = str[0..from] + str[index..];
-					index = from;
-					edited = true;
-				}
-			}
-			else if ( !char.IsControl( key.KeyChar ) ) {
-				str = str[0..index] + key.KeyChar + str[index..];
-				index++;
-				edited = true;
-			}
-			else if ( (key.Key == ConsoleKey.Y && key.Modifiers == ConsoleModifiers.Control) 
-				|| (key.Key == ConsoleKey.Z && key.Modifiers.HasFlag( ConsoleModifiers.Control | ConsoleModifiers.Shift )) ) {
-				historyIndex = Math.Min( history.Count - 1, historyIndex + 1 );
-				(str, index) = history[historyIndex];
-				stopwatch.Stop();
-				stopwatch.Reset();
-			}
-			else if ( key.Key == ConsoleKey.Z && key.Modifiers == ConsoleModifiers.Control ) {
-				historyIndex = Math.Max( 0, historyIndex - 1 );
-				(str, index) = history[historyIndex];
-				stopwatch.Stop();
-				stopwatch.Reset();
-			}
-
-			if ( edited ) {
-				stopwatch.Restart();
-			}
-		}
-
-		Console.CursorLeft = rx;
-		Console.CursorTop = ry;
+		screen.Run();
+		project.Save();
+		Console.Clear();
 		Console.CursorVisible = true;
-		return str;
 	}
 
 	void Split () {
@@ -817,9 +347,8 @@ public class Program {
 	}
 
 	static string configPath = "./l12nConfig.json";
-	public static char escChar = '\u001C';
 	public static string esc ( char c ) {
-		return $"{escChar}{c}";
+		return $"{Window.escChar}{c}";
 	}
 
 	Stack<ConsoleColor> fgColorStack = new();
@@ -847,14 +376,15 @@ public class Program {
 	}
 
 	void Write ( string str ) {
-		var parts = str.Split( escChar );
+		var parts = str.Split( Window.escChar );
 		for ( int i = 0; i < parts.Length; i++ ) {
 			if ( i > 0 ) {
 				Fg( parts[i][0] switch {
 					'G' => ConsoleColor.Green,
 					'Y' => ConsoleColor.Yellow,
 					'R' => ConsoleColor.Red,
-					'B' => ConsoleColor.Cyan,
+					'C' => ConsoleColor.Cyan,
+					'B' => ConsoleColor.Blue,
 					'N' => ConsoleColor.DarkGray,
 					_ => null
 				} );
@@ -930,21 +460,21 @@ public class Program {
 			}
 
 			if ( from != 0 )
-				writeLine( $"{esc( 'Y' )} ^{esc( '\0' )}" );
+				writeLine( $"{esc( 'Y' )} ^{esc( ':' )}" );
 			for ( var i = from; i < to; i++ ) {
 				if ( selectIndex == i )
-					writeLine( $"{esc( 'Y' )}[{esc( '\0' )}{stringifier( options[i] )}{esc( 'Y' )}]{esc( '\0' )}" );
+					writeLine( $"{esc( 'Y' )}[{esc( ':' )}{stringifier( options[i] )}{esc( 'Y' )}]{esc( ':' )}" );
 				else
 					writeLine( $" {stringifier( options[i] )} " );
 			}
 			if ( to != options.Count )
-				writeLine( $"{esc( 'Y' )} v{esc( '\0' )}" );
+				writeLine( $"{esc( 'Y' )} v{esc( ':' )}" );
 
 			if ( allowCancel ) {
 				if ( selectIndex == options.Count )
-					writeLine( $"{esc( 'Y' )}[{esc( '\0' )}{esc( 'R' )}Cancel{esc( '\0' )}{esc( 'Y' )}]{esc( '\0' )}" );
+					writeLine( $"{esc( 'Y' )}[{esc( ':' )}{esc( 'R' )}Cancel{esc( ':' )}{esc( 'Y' )}]{esc( ':' )}" );
 				else
-					writeLine( $" {esc( 'R' )}Cancel{esc( '\0' )} " );
+					writeLine( $" {esc( 'R' )}Cancel{esc( ':' )} " );
 			}
 		}
 
@@ -959,7 +489,7 @@ public class Program {
 				else if ( key.Key == ConsoleKey.DownArrow ) {
 					selectIndex = Math.Min( allowCancel ? ( options.Count ) : ( options.Count - 1 ), selectIndex + 1 );
 				}
-				else if ( key.Key == ConsoleKey.Enter ) {
+				else if ( key.IsConfirmAction() ) {
 					if ( selectIndex == options.Count )
 						return default;
 					else
@@ -1034,8 +564,8 @@ public class Program {
 	}
 
 	void LinkProject ( Config config ) {
-		WriteLine( $"First, where is your project located? (that's the {esc( 'G' )}.csproj{esc( '\0' )} file)" );
-		WriteLine( $"The current location is {esc( 'G' )}{Directory.GetCurrentDirectory()}{esc( '\0' )}" );
+		WriteLine( $"First, where is your project located? (that's the {esc( 'G' )}.csproj{esc( ':' )} file)" );
+		WriteLine( $"The current location is {esc( 'G' )}{Directory.GetCurrentDirectory()}{esc( ':' )}" );
 		WriteLine( "The exact file location, or the folder it's in is fine:" );
 		string location = "";
 		Prompt( loc => {
@@ -1051,7 +581,7 @@ public class Program {
 					return true;
 				}
 				else {
-					Error( $"I can't find any {esc( 'G' )}.csproj{esc( '\0' )} files there" );
+					Error( $"I can't find any {esc( 'G' )}.csproj{esc( ':' )} files there" );
 					return false;
 				}
 			}
@@ -1061,7 +591,7 @@ public class Program {
 					return true;
 				}
 				else {
-					Error( $"This is not a {esc( 'G' )}.csproj{esc( '\0' )} file" );
+					Error( $"This is not a {esc( 'G' )}.csproj{esc( ':' )} file" );
 					return false;
 				}
 			}
@@ -1071,17 +601,17 @@ public class Program {
 			}
 		} );
 
-		WriteLine( $"Selected: {esc( 'G' )}{Path.GetFileName( location )}{esc( '\0' )}" );
+		WriteLine( $"Selected: {esc( 'G' )}{Path.GetFileName( location )}{esc( ':' )}" );
 		using var contents = XmlReader.Create( location );
 		var @namespace = Path.GetFileNameWithoutExtension( location );
 		if ( contents.ReadToFollowing( "RootNamespace" ) ) {
 			@namespace = contents.ReadElementContentAsString();
 		}
 		var rootNamespace = @namespace;
-		WriteLine( $"The root namespace is {esc( 'G' )}{@namespace}{esc( '\0' )}" );
+		WriteLine( $"The root namespace is {esc( 'G' )}{@namespace}{esc( ':' )}" );
 		@namespace = @namespace + ".Localisation";
 		while ( true ) {
-			WriteLine( $"We will use {esc( 'G' )}{@namespace}{esc( '\0' )} for l12n files" );
+			WriteLine( $"We will use {esc( 'G' )}{@namespace}{esc( ':' )} for l12n files" );
 			WriteLine( "Is that okay or do you want to change it?" );
 			if ( Select( new[] { "Okay", "Change" } ) == "Okay" ) {
 				break;
@@ -1098,7 +628,7 @@ public class Program {
 		}
 
 		if ( string.IsNullOrWhiteSpace( config.L12NFilesLocation ) ) {
-			WriteLine( $"Where would you like to store the {esc( 'G' )}.json{esc( '\0' )} files?" );
+			WriteLine( $"Where would you like to store the {esc( 'G' )}.json{esc( ':' )} files?" );
 			const string project = "In the project files";
 			const string here = "Next to this executable";
 			const string custom = "Somewhere else";
