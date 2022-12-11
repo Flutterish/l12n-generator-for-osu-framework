@@ -117,6 +117,6 @@ public class ResourceGenerator {
 					writer.Generate();
 			}
 		}
-		saveNamespace( rootPath, config.Namespace, Array.Empty<string>(), summary.RootNamespace );
+		saveNamespace( rootPath, config.Namespace + ".Resx", Array.Empty<string>(), summary.RootNamespace );
 	}
 }
