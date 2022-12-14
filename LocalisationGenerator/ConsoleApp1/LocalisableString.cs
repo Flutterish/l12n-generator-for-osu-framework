@@ -72,7 +72,7 @@ public class LocalisableString {
 	public string ColoredValue
 		=> Colorize( Value, colorizeInnards: true );
 
-	public string ExportAsIndices ( Dictionary<string, int>? indices = null ) {
+	public string Export ( Dictionary<string, int>? indices = null ) {
 		if ( indices == null ) {
 			var args = Args.ToArray();
 			indices = new();
@@ -115,8 +115,8 @@ public class LocalisableString {
 	}
 
 	public string Format ( object?[] args, Dictionary<string, int>? indices = null )
-		=> string.Format( CultureInfo.GetCultureInfo( Locale ), ExportAsIndices( indices ), args );
+		=> string.Format( CultureInfo.GetCultureInfo( Locale ), Export( indices ), args );
 
 	public string ColoredFormat ( object?[] args, Dictionary<string, int>? indices = null )
-		=> string.Format( CultureInfo.GetCultureInfo( Locale ), Colorize( ExportAsIndices( indices ), colorizeInnards: false ), args );
+		=> string.Format( CultureInfo.GetCultureInfo( Locale ), Colorize( Export( indices ), colorizeInnards: false ), args );
 }

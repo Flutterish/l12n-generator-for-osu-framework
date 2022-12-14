@@ -53,6 +53,7 @@ public class ResourceGenerator {
 			sb.AppendLine();
 			sb.AppendLine( "using osu.Framework.Localisation;" );
 			sb.AppendLine();
+
 			sb.AppendLine( $"namespace {@namespace} {{" );
 			sb.AppendLine( $"	public static class {(location.Any() ? location.Last() : "")}Strings {{" );
 			sb.AppendLine( $"		private const string PREFIX = {JsonConvert.SerializeObject($"{name}.Strings" )};" );
@@ -85,14 +86,14 @@ public class ResourceGenerator {
 
 					sb.AppendLine( $"		public static LocalisableString {pascalise(shortKey)}( {string.Join( ", ", str.Arguments.Keys.Select( x => $"object {argName(x)}" ) )} ) => new TranslatableString(" );
 					sb.AppendLine( $"			getKey( {JsonConvert.SerializeObject( shortKey )} )," );
-					sb.AppendLine( $"			{JsonConvert.SerializeObject( example.ExportAsIndices(str.ArgIndices) )}," );
+					sb.AppendLine( $"			{JsonConvert.SerializeObject( example.Export(str.ArgIndices) )}," );
 					sb.AppendLine( $"			{string.Join( ", ", str.Arguments.Keys.Select( argName ) )}" );
 					sb.AppendLine( "		);" );
 				}
 				else {
 					sb.AppendLine( $"		public static readonly LocalisableString {pascalise(shortKey)} = new TranslatableString(" );
 					sb.AppendLine( $"			getKey( {JsonConvert.SerializeObject(shortKey)} )," );
-					sb.AppendLine( $"			{JsonConvert.SerializeObject(example.Value)}" );
+					sb.AppendLine( $"			{JsonConvert.SerializeObject( example.Export() )}" );
 					sb.AppendLine( "		);" );
 				}
 			}
@@ -108,7 +109,7 @@ public class ResourceGenerator {
 
 				foreach ( var (shortKey, key) in ns.Keys ) {
 					if ( locale.Locale.Strings.TryGetValue( key, out var str ) ) {
-						writer.AddResource( shortKey, str.ExportAsIndices( summary.Keys[key].ArgIndices ) );
+						writer.AddResource( shortKey, str.Export( summary.Keys[key].ArgIndices ) );
 						any = true;
 					}
 				}
